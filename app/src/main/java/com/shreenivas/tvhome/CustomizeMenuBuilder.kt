@@ -355,6 +355,136 @@ object CustomizeMenuBuilder {
         addView(TextView(ctx).apply { text = "›"; textSize = 12f; setTextColor(Color.argb(180, 255, 255, 255)) })
     }
 
-    private fun makeThemeCard(ctx: Context, name: String, sub: String, sel: Boolean, accent: Int) = LinearLayout(ctx).apply {
-        orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
-      
+    private fun makeThemeCard(ctx: Context, name: String, sub: String, sel: Boolean, accent: Int): LinearLayout {
+        return LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(ctx, 9), dp(ctx, 6), dp(ctx, 8), dp(ctx, 6))
+            isFocusable = true
+            background = pillBg(ctx, sel, false, accent)
+            setOnFocusChangeListener { v, f ->
+                LauncherUtils.applyFocusSpring(v, f, 1.02f, 3f)
+                v.background = pillBg(ctx, sel, f, accent)
+            }
+
+            val mid = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
+            mid.addView(TextView(ctx).apply {
+                text = name
+                textSize = 9.5f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(Color.WHITE)
+                isSingleLine = true
+            })
+            mid.addView(TextView(ctx).apply {
+                text = sub
+                textSize = 7.5f
+                setTextColor(Color.argb(165, 200, 220, 235))
+                isSingleLine = true
+            })
+            addView(mid, LinearLayout.LayoutParams(0, -2, 1f))
+
+            if (sel) {
+                addView(TextView(ctx).apply {
+                    text = "✓"
+                    textSize = 11f
+                    typeface = Typeface.DEFAULT_BOLD
+                    setTextColor(accent)
+                })
+            }
+        }
+    }
+
+    private fun addWideCard(
+        ctx: Context,
+        panel: LinearLayout,
+        tagStr: String,
+        icon: String,
+        title: String,
+        sub: String,
+        actTxt: String,
+        accent: Int,
+        click: () -> Unit
+    ) {
+        val c = LinearLayout(ctx).apply {
+            tag = tagStr
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(ctx, 10), dp(ctx, 8), dp(ctx, 10), dp(ctx, 8))
+            isFocusable = true
+            background = pillBg(ctx, false, false, accent)
+            setOnFocusChangeListener { v, f ->
+                LauncherUtils.applyFocusSpring(v, f, 1.02f, 3f)
+                v.background = pillBg(ctx, false, f, accent)
+            }
+            setOnClickListener {
+                lastFocusedTag = tagStr
+                click()
+            }
+        }
+
+        c.addView(TextView(ctx).apply {
+            text = icon
+            textSize = 14f
+            setTextColor(accent)
+            setPadding(0, 0, dp(ctx, 8), 0)
+        })
+
+        val mid = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
+        mid.addView(TextView(ctx).apply {
+            text = title
+            textSize = 10f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.WHITE)
+        })
+        mid.addView(TextView(ctx).apply {
+            text = sub
+            textSize = 8f
+            setTextColor(Color.argb(175, 200, 225, 235))
+        })
+        c.addView(mid, LinearLayout.LayoutParams(0, -2, 1f))
+
+        c.addView(TextView(ctx).apply {
+            text = actTxt
+            textSize = 9f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(accent)
+        })
+
+        panel.addView(c, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(ctx, 6) })
+    }
+
+    private fun pillBg(ctx: Context, sel: Boolean, foc: Boolean, accent: Int): GradientDrawable {
+        return GradientDrawable().apply {
+            setColor(
+                when {
+                    foc -> Color.argb(95, 255, 255, 255)
+                    sel -> Color.argb(65, 90, 140, 220)
+                    else -> Color.argb(38, 255, 255, 255)
+                }
+            )
+            cornerRadius = LauncherUtils.dpF(ctx, 12f)
+            setStroke(
+                dp(ctx, if (foc || sel) 2 else 1),
+                if (foc || sel) accent else Color.argb(45, 255, 255, 255)
+            )
+        }
+    }
+
+    private fun addHeader(ctx: Context, panel: LinearLayout, txt: String) {
+        val t = TextView(ctx).apply {
+            text = txt
+            textSize = 9f
+            typeface = Typeface.DEFAULT_BOLD
+            letterSpacing = 0.07f
+            setTextColor(Color.argb(180, 185, 210, 230))
+        }
+        panel.addView(t, LinearLayout.LayoutParams(-1, -2).apply {
+            topMargin = dp(ctx, 8)
+            bottomMargin = dp(ctx, 4)
+        })
+    }
+
+    private fun cap(s: String): String = s.replaceFirstChar { it.uppercase() }
+
+    private fun dp(ctx: Context, v: Int): Int = LauncherUtils.dp(ctx, v)
+}
