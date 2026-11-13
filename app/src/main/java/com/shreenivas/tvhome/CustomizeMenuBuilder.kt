@@ -1,8 +1,6 @@
 package com.shreenivas.tvhome
 
-import android.animation.Animator
-import android.animation.AnimatorListenerAdapter
-import android.animation.ValueAnimator
+import android.animation.LayoutTransition
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
@@ -11,7 +9,6 @@ import android.text.TextUtils
 import android.view.FocusFinder
 import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -20,7 +17,6 @@ object CustomizeMenuBuilder {
     private var openSubMenu = ""
     private var lastFocusedTag = ""
     private var ignoreFocusTrigger = false
-    private var isAnimating = false
 
     private var activePanelRef: LinearLayout? = null
     private var activeSubBoxRef: LinearLayout? = null
@@ -39,37 +35,11 @@ object CustomizeMenuBuilder {
         activeSubBoxRef = null
         lastFocusedTag = "acc_$closedKey"
 
-        box?.descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
         parentCard?.requestFocus()
-        onClosedCallback?.invoke()
-
-        if (box != null && activePanelRef != null) {
-            isAnimating = true
-            val startH = maxOf(1, box.height)
-            val lp = box.layoutParams as? ViewGroup.MarginLayoutParams
-            val startMargin = lp?.bottomMargin ?: 0
-
-            ValueAnimator.ofFloat(1f, 0f).apply {
-                duration = 170L
-                interpolator = LauncherUtils.SILKY_EASE
-                addUpdateListener { anim ->
-                    val f = anim.animatedValue as Float
-                    box.alpha = f
-                    lp?.let {
-                        it.height = maxOf(1, (startH * f).toInt())
-                        it.bottomMargin = (startMargin * f).toInt()
-                        box.layoutParams = it
-                    }
-                }
-                addListener(object : AnimatorListenerAdapter() {
-                    override fun onAnimationEnd(animation: Animator) {
-                        if (box.parent == activePanelRef) activePanelRef?.removeView(box)
-                        isAnimating = false
-                    }
-                })
-                start()
-            }
+        if (box != null && box.parent == activePanelRef) {
+            activePanelRef?.removeView(box)
         }
+        onClosedCallback?.invoke()
     }
 
     fun closeSubMenuAndNavigate(moveDown: Boolean) {
@@ -100,11 +70,11 @@ object CustomizeMenuBuilder {
         activeCloseDrawerRef = onBackToApps
         activeSubBoxRef = null
         openSubMenu = ""
-        isAnimating = false
 
         (panel.findFocus()?.tag as? String)?.let { lastFocusedTag = it }
 
         ignoreFocusTrigger = true
+        panel.layoutTransition = LayoutTransition().apply { setDuration(180L) }
         panel.removeAllViews()
         val widthPct = lp.panelWidthPct
         val narrowMode = widthPct <= 25
@@ -162,17 +132,17 @@ object CustomizeMenuBuilder {
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
             isFocusable = true
-            background = pillBg(ctx, sel = false, foc = false, accent = lp.accentColor)
+            background = glossyPillBg(ctx, sel = false, foc = false, accent = lp.accentColor)
             setOnFocusChangeListener { v, f ->
                 LauncherUtils.applyFocusSpring(v, f, 1.03f, 3f)
-                v.background = pillBg(ctx, false, f, lp.accentColor)
+                v.background = glossyPillBg(ctx, false, f, lp.accentColor)
             }
             setOnClickListener { activeCloseDrawerRef?.invoke() }
         }
         panel.addView(backBtn, LinearLayout.LayoutParams(-1, dp(ctx, 40)).apply { topMargin = dp(ctx, 8); bottomMargin = dp(ctx, 6) })
 
         if (lastFocusedTag.isNotEmpty()) panel.findViewWithTag<View>(lastFocusedTag)?.requestFocus()
-        panel.postDelayed({ ignoreFocusTrigger = false }, 160L)
+        panel.postDelayed({ ignoreFocusTrigger = false }, 180L)
     }
     private fun addAccordionPair(
         ctx: Context, panel: LinearLayout, lp: LauncherPreferences, narrowMode: Boolean,
@@ -203,8 +173,10 @@ object CustomizeMenuBuilder {
         ctx: Context, panel: LinearLayout, lp: LauncherPreferences,
         key: String, clickedCard: LinearLayout, onLiveRefresh: () -> Unit
     ) {
-        if (isAnimating) return
-        if (key == openSubMenu) { closeSubMenuWithAnimation(); return }
+        if (key == openSubMenu) {
+            closeSubMenuWithAnimation()
+            return
+        }
         if (openSubMenu.isNotEmpty() && activeSubBoxRef != null) {
             panel.removeView(activeSubBoxRef)
             activeSubBoxRef = null
@@ -223,10 +195,12 @@ object CustomizeMenuBuilder {
         val box = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(ctx, 8), dp(ctx, 8), dp(ctx, 8), dp(ctx, 8))
-            background = GradientDrawable().apply {
-                setColor(Color.argb(195, 16, 24, 46))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Color.argb(145, 22, 32, 64), Color.argb(175, 14, 22, 46))
+            ).apply {
                 cornerRadius = LauncherUtils.dpF(ctx, 14f)
-                setStroke(dp(ctx, 1), Color.argb(110, 255, 255, 255))
+                setStroke(dp(ctx, 1), Color.argb(115, 255, 255, 255))
             }
         }
         activeSubBoxRef = box
@@ -244,7 +218,7 @@ object CustomizeMenuBuilder {
             text = "$headerTxt (◀ / ▶)"
             textSize = 8f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.argb(185, 190, 215, 235))
+            setTextColor(Color.argb(195, 200, 225, 245))
             setPadding(dp(ctx, 2), 0, 0, dp(ctx, 6))
         })
 
@@ -264,7 +238,7 @@ object CustomizeMenuBuilder {
                 gravity = Gravity.CENTER
                 setPadding(2, dp(ctx, 7), 2, dp(ctx, 7))
                 isFocusable = true
-                background = pillBg(ctx, isSel, isSel, lp.accentColor)
+                background = glossyPillBg(ctx, isSel, isSel, lp.accentColor)
             }
             if (isSel) initialSelPill = pill
 
@@ -281,7 +255,7 @@ object CustomizeMenuBuilder {
                     pills.forEachIndexed { k, p ->
                         val s = vals[k] == v
                         p.tag = if (s) "pill_${key}_sel" else "pill_${key}_${vals[k]}"
-                        p.background = pillBg(ctx, s, p.hasFocus(), lp.accentColor)
+                        p.background = glossyPillBg(ctx, s, p.hasFocus(), lp.accentColor)
                     }
                     updateParentCardValue(parentCard, key, v, lp.accentColor)
                     onLive()
@@ -290,7 +264,7 @@ object CustomizeMenuBuilder {
 
             pill.setOnFocusChangeListener { vw, f ->
                 LauncherUtils.applyFocusSpring(vw, f, 1.05f, 2f)
-                if (f) applySel() else vw.background = pillBg(ctx, isOptSelected(lp, key, v), false, lp.accentColor)
+                if (f) applySel() else vw.background = glossyPillBg(ctx, isOptSelected(lp, key, v), false, lp.accentColor)
             }
             pill.setOnClickListener { applySel(); closeSubMenuWithAnimation() }
             pills.add(pill)
@@ -298,35 +272,17 @@ object CustomizeMenuBuilder {
         }
 
         box.addView(optRow)
-        val bp = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(ctx, 8) }
-        panel.addView(box, minOf(index, panel.childCount), bp)
+        panel.addView(box, minOf(index, panel.childCount), LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(ctx, 8) })
 
         ignoreFocusTrigger = true
         (initialSelPill ?: pills.firstOrNull())?.requestFocus()
-        box.postDelayed({ ignoreFocusTrigger = false }, 150L)
-
-        box.measure(View.MeasureSpec.makeMeasureSpec(if (panel.width > 0) panel.width else dp(ctx, 260), View.MeasureSpec.AT_MOST), 0)
-        val targetH = maxOf(1, box.measuredHeight)
-        bp.height = 1; box.alpha = 0f
-        ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = 200L; interpolator = LauncherUtils.SILKY_EASE
-            addUpdateListener { anim ->
-                val f = anim.animatedValue as Float
-                box.alpha = f; bp.height = maxOf(1, (targetH * f).toInt()); box.layoutParams = bp
+        box.postDelayed({
+            ignoreFocusTrigger = false
+            (panel.parent as? ScrollView)?.let { sv ->
+                val diff = (box.bottom + dp(ctx, 12)) - (sv.scrollY + sv.height)
+                if (diff > 0) sv.smoothScrollBy(0, diff)
             }
-            addListener(object : AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: Animator) {
-                    bp.height = ViewGroup.LayoutParams.WRAP_CONTENT; box.layoutParams = bp
-                    (panel.parent as? ScrollView)?.let { sv ->
-                        sv.post {
-                            val diff = (box.bottom + dp(ctx, 12)) - (sv.scrollY + sv.height)
-                            if (diff > 0) sv.smoothScrollBy(0, diff)
-                        }
-                    }
-                }
-            })
-            start()
-        }
+        }, 160L)
     }
 
     private fun updateParentCardValue(card: LinearLayout, key: String, v: String, accent: Int) {
@@ -345,52 +301,32 @@ object CustomizeMenuBuilder {
     private fun makeSettingCard(ctx: Context, icon: String, title: String, valTxt: String, accent: Int) = LinearLayout(ctx).apply {
         orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
         setPadding(dp(ctx, 8), dp(ctx, 6), dp(ctx, 6), dp(ctx, 6)); isFocusable = true
-        background = pillBg(ctx, false, false, accent)
-        setOnFocusChangeListener { v, f -> LauncherUtils.applyFocusSpring(v, f, 1.02f, 3f); v.background = pillBg(ctx, false, f, accent) }
+        background = glossyPillBg(ctx, false, false, accent)
+        setOnFocusChangeListener { v, f -> LauncherUtils.applyFocusSpring(v, f, 1.02f, 3f); v.background = glossyPillBg(ctx, false, f, accent) }
         addView(TextView(ctx).apply { text = icon; textSize = 12f; setTextColor(accent); setPadding(0, 0, dp(ctx, 6), 0) })
         val mid = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
         mid.addView(TextView(ctx).apply { text = title; textSize = 9f; typeface = Typeface.DEFAULT_BOLD; setTextColor(Color.WHITE); isSingleLine = true; ellipsize = TextUtils.TruncateAt.END })
         mid.addView(TextView(ctx).apply { text = valTxt; textSize = 8f; setTextColor(accent); isSingleLine = true })
         addView(mid, LinearLayout.LayoutParams(0, -2, 1f))
-        addView(TextView(ctx).apply { text = "›"; textSize = 12f; setTextColor(Color.argb(180, 255, 255, 255)) })
+        addView(TextView(ctx).apply { text = "›"; textSize = 12f; setTextColor(Color.argb(190, 255, 255, 255)) })
     }
 
-    private fun makeThemeCard(ctx: Context, name: String, sub: String, sel: Boolean, accent: Int): LinearLayout {
-        return LinearLayout(ctx).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(ctx, 9), dp(ctx, 6), dp(ctx, 8), dp(ctx, 6))
-            isFocusable = true
-            background = pillBg(ctx, sel, false, accent)
-            setOnFocusChangeListener { v, f ->
-                LauncherUtils.applyFocusSpring(v, f, 1.02f, 3f)
-                v.background = pillBg(ctx, sel, f, accent)
-            }
-
-            val mid = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
-            mid.addView(TextView(ctx).apply {
-                text = name
-                textSize = 9.5f
+    private fun makeThemeCard(ctx: Context, name: String, sub: String, sel: Boolean, accent: Int) = LinearLayout(ctx).apply {
+        orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+        setPadding(dp(ctx, 9), dp(ctx, 6), dp(ctx, 8), dp(ctx, 6)); isFocusable = true
+        background = glossyPillBg(ctx, sel, false, accent)
+        setOnFocusChangeListener { v, f -> LauncherUtils.applyFocusSpring(v, f, 1.02f, 3f); v.background = glossyPillBg(ctx, sel, f, accent) }
+        val mid = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
+        mid.addView(TextView(ctx).apply { text = name; textSize = 9.5f; typeface = Typeface.DEFAULT_BOLD; setTextColor(Color.WHITE); isSingleLine = true })
+        mid.addView(TextView(ctx).apply { text = sub; textSize = 7.5f; setTextColor(Color.argb(180, 210, 230, 245)); isSingleLine = true })
+        addView(mid, LinearLayout.LayoutParams(0, -2, 1f))
+        if (sel) {
+            addView(TextView(ctx).apply {
+                text = "✓"
+                textSize = 11f
                 typeface = Typeface.DEFAULT_BOLD
-                setTextColor(Color.WHITE)
-                isSingleLine = true
+                setTextColor(accent)
             })
-            mid.addView(TextView(ctx).apply {
-                text = sub
-                textSize = 7.5f
-                setTextColor(Color.argb(165, 200, 220, 235))
-                isSingleLine = true
-            })
-            addView(mid, LinearLayout.LayoutParams(0, -2, 1f))
-
-            if (sel) {
-                addView(TextView(ctx).apply {
-                    text = "✓"
-                    textSize = 11f
-                    typeface = Typeface.DEFAULT_BOLD
-                    setTextColor(accent)
-                })
-            }
         }
     }
 
@@ -411,24 +347,22 @@ object CustomizeMenuBuilder {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(ctx, 10), dp(ctx, 8), dp(ctx, 10), dp(ctx, 8))
             isFocusable = true
-            background = pillBg(ctx, false, false, accent)
+            background = glossyPillBg(ctx, false, false, accent)
             setOnFocusChangeListener { v, f ->
                 LauncherUtils.applyFocusSpring(v, f, 1.02f, 3f)
-                v.background = pillBg(ctx, false, f, accent)
+                v.background = glossyPillBg(ctx, false, f, accent)
             }
             setOnClickListener {
                 lastFocusedTag = tagStr
                 click()
             }
         }
-
         c.addView(TextView(ctx).apply {
             text = icon
             textSize = 14f
             setTextColor(accent)
             setPadding(0, 0, dp(ctx, 8), 0)
         })
-
         val mid = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
         mid.addView(TextView(ctx).apply {
             text = title
@@ -439,46 +373,43 @@ object CustomizeMenuBuilder {
         mid.addView(TextView(ctx).apply {
             text = sub
             textSize = 8f
-            setTextColor(Color.argb(175, 200, 225, 235))
+            setTextColor(Color.argb(185, 210, 230, 245))
         })
         c.addView(mid, LinearLayout.LayoutParams(0, -2, 1f))
-
         c.addView(TextView(ctx).apply {
             text = actTxt
             textSize = 9f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(accent)
         })
-
         panel.addView(c, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(ctx, 6) })
     }
 
-    private fun pillBg(ctx: Context, sel: Boolean, foc: Boolean, accent: Int): GradientDrawable {
-        return GradientDrawable().apply {
-            setColor(
-                when {
-                    foc -> Color.argb(95, 255, 255, 255)
-                    sel -> Color.argb(65, 90, 140, 220)
-                    else -> Color.argb(38, 255, 255, 255)
-                }
-            )
+    private fun glossyPillBg(ctx: Context, sel: Boolean, foc: Boolean, accent: Int): GradientDrawable {
+        return GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            when {
+                foc -> intArrayOf(Color.argb(115, 255, 255, 255), Color.argb(75, 255, 255, 255))
+                sel -> intArrayOf(Color.argb(85, 110, 165, 245), Color.argb(50, 75, 125, 210))
+                else -> intArrayOf(Color.argb(54, 255, 255, 255), Color.argb(26, 255, 255, 255))
+            }
+        ).apply {
             cornerRadius = LauncherUtils.dpF(ctx, 12f)
             setStroke(
                 dp(ctx, if (foc || sel) 2 else 1),
-                if (foc || sel) accent else Color.argb(45, 255, 255, 255)
+                if (foc || sel) accent else Color.argb(65, 255, 255, 255)
             )
         }
     }
 
     private fun addHeader(ctx: Context, panel: LinearLayout, txt: String) {
-        val t = TextView(ctx).apply {
+        panel.addView(TextView(ctx).apply {
             text = txt
             textSize = 9f
             typeface = Typeface.DEFAULT_BOLD
             letterSpacing = 0.07f
-            setTextColor(Color.argb(180, 185, 210, 230))
-        }
-        panel.addView(t, LinearLayout.LayoutParams(-1, -2).apply {
+            setTextColor(Color.argb(195, 200, 225, 245))
+        }, LinearLayout.LayoutParams(-1, -2).apply {
             topMargin = dp(ctx, 8)
             bottomMargin = dp(ctx, 4)
         })
