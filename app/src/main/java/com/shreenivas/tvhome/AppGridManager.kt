@@ -103,7 +103,7 @@ object AppGridManager {
             val unique = LinkedHashMap<String, ResolveInfo>()
             LauncherUtils.addApps(pm, Intent.CATEGORY_LEANBACK_LAUNCHER, unique)
             LauncherUtils.addApps(pm, Intent.CATEGORY_LAUNCHER, unique)
-            val list = ArrayList(unique.values())
+            val list = ArrayList(unique.values)
             for (app in list) {
                 val pkg = app.activityInfo.packageName
                 labelCache[pkg] = app.loadLabel(pm).toString()
