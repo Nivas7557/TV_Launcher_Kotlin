@@ -1,5 +1,6 @@
 package com.shreenivas.tvhome
 
+import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
@@ -40,6 +41,7 @@ class SideControlDrawer(
     private var currentMode = ""
     private var activeScroll: ScrollView? = null
     private var activePanel: LinearLayout? = null
+    private var brightnessPct = 85
 
     fun toggle(mode: String) {
         if (isOpen && mode == currentMode) close() else open(mode)
@@ -50,15 +52,21 @@ class SideControlDrawer(
         currentMode = mode
         isOpen = true
 
+        // True Glossymorphic Translucent Glass (Background apps stay subtly visible!)
         drawerLayout.background = GradientDrawable(
             GradientDrawable.Orientation.TL_BR,
-            intArrayOf(Color.argb(244, 18, 28, 52), Color.argb(248, 12, 18, 36))
+            intArrayOf(
+                Color.argb(175, 24, 34, 68),
+                Color.argb(190, 16, 22, 48),
+                Color.argb(205, 12, 18, 38)
+            )
         ).apply {
-            cornerRadius = LauncherUtils.dpF(context, 22f)
-            setStroke(dp(1.5f), Color.argb(95, 255, 255, 255))
+            cornerRadius = LauncherUtils.dpF(context, 24f)
+            setStroke(dp(1.5f), Color.argb(120, 255, 255, 255))
         }
-        drawerLayout.elevation = dp(18f).toFloat()
+        drawerLayout.elevation = dp(20f).toFloat()
 
+        scrim.setBackgroundColor(Color.argb(45, 4, 8, 20))
         scrim.visibility = View.VISIBLE
         drawerLayout.visibility = View.VISIBLE
 
@@ -67,18 +75,16 @@ class SideControlDrawer(
 
         if (!wasOpen) {
             scrim.alpha = 0f
-            scrim.animate().alpha(1f).setDuration(240L).start()
+            scrim.animate().alpha(1f).setDuration(220L).start()
 
-            val startX = drawerLayout.layoutParams.width + dp(36f)
-            drawerLayout.setLayerType(View.LAYER_TYPE_HARDWARE, null)
+            val startX = drawerLayout.layoutParams.width + dp(30f)
             drawerLayout.translationX = startX.toFloat()
-            drawerLayout.alpha = 0.4f
+            drawerLayout.alpha = 0f
             drawerLayout.animate()
                 .translationX(0f)
                 .alpha(1f)
-                .setDuration(300L)
+                .setDuration(260L)
                 .setInterpolator(LauncherUtils.SILKY_EASE)
-                .withEndAction { drawerLayout.setLayerType(View.LAYER_TYPE_NONE, null) }
                 .start()
         }
     }
@@ -87,17 +93,15 @@ class SideControlDrawer(
         if (!isOpen) return
         isOpen = false
         currentMode = ""
-        val out = maxOf(dp(340f), drawerLayout.width + dp(36f))
+        val out = maxOf(dp(340f), drawerLayout.width + dp(30f))
 
-        scrim.animate().alpha(0f).setDuration(200L).start()
-        drawerLayout.setLayerType(View.LAYER_TYPE_HARDWARE, null)
+        scrim.animate().alpha(0f).setDuration(180L).start()
         drawerLayout.animate()
             .translationX(out.toFloat())
             .alpha(0f)
-            .setDuration(250L)
+            .setDuration(220L)
             .setInterpolator(LauncherUtils.SILKY_EASE)
             .withEndAction {
-                drawerLayout.setLayerType(View.LAYER_TYPE_NONE, null)
                 scrim.visibility = View.GONE
                 drawerLayout.visibility = View.GONE
             }
@@ -137,7 +141,7 @@ class SideControlDrawer(
         topRow.addView(closeX, LinearLayout.LayoutParams(dp(30f), dp(30f)))
         drawerLayout.addView(topRow)
 
-        val divider = View(context).apply { setBackgroundColor(Color.argb(35, 255, 255, 255)) }
+        val divider = View(context).apply { setBackgroundColor(Color.argb(55, 255, 255, 255)) }
         drawerLayout.addView(divider, LinearLayout.LayoutParams(-1, dp(1f)).apply { bottomMargin = dp(8f) })
 
         activeScroll = ScrollView(context).apply {
@@ -148,7 +152,7 @@ class SideControlDrawer(
         drawerLayout.addView(activeScroll, LinearLayout.LayoutParams(-1, 0, 1f))
         activeScroll?.addView(activePanel)
     }
-        private fun populateActivePanel(isInitialOpen: Boolean) {
+    private fun populateActivePanel(isInitialOpen: Boolean) {
         val panel = activePanel ?: return
         panel.removeAllViews()
 
@@ -168,11 +172,6 @@ class SideControlDrawer(
         }
 
         if (isInitialOpen) {
-            activeScroll?.apply {
-                translationY = dp(10f).toFloat()
-                alpha = 0f
-                animate().translationY(0f).alpha(1f).setDuration(220L).setInterpolator(LauncherUtils.SILKY_EASE).start()
-            }
             panel.post { panel.requestFocus() }
         }
     }
@@ -187,30 +186,37 @@ class SideControlDrawer(
         val sysBtn = text("⚙ System", 10f, Color.WHITE, true).apply {
             setPadding(dp(10f), dp(4f), dp(10f), dp(4f))
             isFocusable = true
-            background = btnBg(false)
-            setOnFocusChangeListener { v, f -> LauncherUtils.applyFocusSpring(v, f, 1.05f, 3f); v.background = btnBg(f) }
+            background = glassCardBg(false)
+            setOnFocusChangeListener { v, f -> LauncherUtils.applyFocusSpring(v, f, 1.05f, 3f); v.background = glassCardBg(f) }
             setOnClickListener { launch(Settings.ACTION_SETTINGS) }
         }
         sysRow.addView(sysBtn)
         panel.addView(sysRow, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8f) })
 
-        // 2x2 Quick Hardware Grid (Video Style: TV Input, Picture, Audio Out, Screen Art)
         val gridRow1 = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
-        gridRow1.addView(makeGridTile("📺", "TV Input", "HDMI 1") { launch(Settings.ACTION_INPUT_METHOD_SETTINGS) },
+        gridRow1.addView(makeGridTile("📺", "TV Input", "HDMI / Source") { launch(Settings.ACTION_INPUT_METHOD_SETTINGS) },
             LinearLayout.LayoutParams(0, dp(56f), 1f).apply { rightMargin = dp(6f) })
-        gridRow1.addView(makeGridTile("🎨", "Picture", "Vivid HDR") { launch(Settings.ACTION_DISPLAY_SETTINGS) },
+        gridRow1.addView(makeGridTile("🎨", "Picture", "Display Mode") { launch(Settings.ACTION_DISPLAY_SETTINGS) },
             LinearLayout.LayoutParams(0, dp(56f), 1f))
         panel.addView(gridRow1, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(6f) })
 
         val gridRow2 = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
-        gridRow2.addView(makeGridTile("🔊", "Audio Out", "TV Speaker") { launch(Settings.ACTION_SOUND_SETTINGS) },
+        gridRow2.addView(makeGridTile("🔊", "Audio Out", "Sound Settings") { launch(Settings.ACTION_SOUND_SETTINGS) },
             LinearLayout.LayoutParams(0, dp(56f), 1f).apply { rightMargin = dp(6f) })
-        gridRow2.addView(makeGridTile("🖼", "Screen Art", "Ambient") { open(MODE_WALLPAPER_EDIT) },
+        gridRow2.addView(makeGridTile("🖼", "Screen Art", "Wallpaper") { open(MODE_WALLPAPER_EDIT) },
             LinearLayout.LayoutParams(0, dp(56f), 1f))
         panel.addView(gridRow2, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8f) })
 
         addLabel(panel, "DISPLAY & SOUND LEVELS")
-        addSliderCard(panel, "☀  Display Brightness", 85) { launch(Settings.ACTION_DISPLAY_SETTINGS) }
+        // In-App Window Brightness Control (No jarring settings jump!)
+        addSliderCard(panel, "☀  Screen Brightness", brightnessPct) { p ->
+            brightnessPct = p
+            (context as? Activity)?.window?.let { win ->
+                val attr = win.attributes
+                attr.screenBrightness = (p.coerceIn(10, 100) / 100f)
+                win.attributes = attr
+            }
+        }
 
         val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
         val maxVol = am?.getStreamMaxVolume(AudioManager.STREAM_MUSIC) ?: 15
@@ -228,8 +234,8 @@ class SideControlDrawer(
 
     private fun makeGridTile(icon: String, title: String, sub: String, onClick: () -> Unit) = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_VERTICAL
-        setPadding(dp(10f), dp(6f), dp(10f), dp(6f)); isFocusable = true; background = btnBg(false)
-        setOnFocusChangeListener { v, f -> LauncherUtils.applyFocusSpring(v, f, 1.03f, 4f); v.background = btnBg(f) }
+        setPadding(dp(10f), dp(6f), dp(10f), dp(6f)); isFocusable = true; background = glassCardBg(false)
+        setOnFocusChangeListener { v, f -> LauncherUtils.applyFocusSpring(v, f, 1.03f, 4f); v.background = glassCardBg(f) }
         setOnClickListener { onClick() }
         addView(text("$icon  $title", 10f, Color.WHITE, true))
         addView(text(sub, 8.5f, lp.accentColor, false).apply { setPadding(0, dp(2f), 0, 0) })
@@ -237,7 +243,7 @@ class SideControlDrawer(
 
     private fun addSliderCard(panel: LinearLayout, label: String, initialPct: Int, onChange: (Int) -> Unit) {
         val card = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL; setPadding(dp(12f), dp(9f), dp(12f), dp(9f)); background = btnBg(false)
+            orientation = LinearLayout.VERTICAL; setPadding(dp(12f), dp(9f), dp(12f), dp(9f)); background = glassCardBg(false)
         }
         val top = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
         val pct = text("$initialPct%", 10.5f, lp.accentColor, true)
@@ -248,7 +254,7 @@ class SideControlDrawer(
 
         val sb = SeekBar(context).apply {
             max = 100; progress = initialPct; isFocusable = true
-            setOnFocusChangeListener { _, f -> card.background = btnBg(f) }
+            setOnFocusChangeListener { _, f -> card.background = glassCardBg(f) }
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(s: SeekBar?, p: Int, user: Boolean) { pct.text = "$p%"; if (user) onChange(p) }
                 override fun onStartTrackingTouch(s: SeekBar?) {}
@@ -288,22 +294,22 @@ class SideControlDrawer(
     private fun addActionButton(panel: LinearLayout, icon: String, title: String, sub: String, act: () -> Unit) {
         val card = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(12f), dp(9f), dp(12f), dp(9f)); isFocusable = true; background = btnBg(false)
-            setOnFocusChangeListener { v, f -> LauncherUtils.applyFocusSpring(v, f, 1.02f, 4f); v.background = btnBg(f) }
+            setPadding(dp(12f), dp(9f), dp(12f), dp(9f)); isFocusable = true; background = glassCardBg(false)
+            setOnFocusChangeListener { v, f -> LauncherUtils.applyFocusSpring(v, f, 1.02f, 4f); v.background = glassCardBg(f) }
             setOnClickListener { act() }
         }
         card.addView(text(icon, 14f, lp.accentColor, true).apply { setPadding(0, 0, dp(10f), 0) })
         val mid = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
         mid.addView(text(title, 10.5f, Color.WHITE, true))
-        mid.addView(text(sub, 8.5f, Color.argb(170, 200, 225, 240), false))
+        mid.addView(text(sub, 8.5f, Color.argb(185, 210, 230, 245), false))
         card.addView(mid, LinearLayout.LayoutParams(0, -2, 1f))
-        card.addView(text("›", 15f, Color.argb(160, 255, 255, 255), true))
+        card.addView(text("›", 15f, Color.argb(180, 255, 255, 255), true))
         panel.addView(card, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(6f) })
     }
 
     private fun launch(act: String) = try { context.startActivity(Intent(act)) } catch (_: Exception) { Toast.makeText(context, "Unavailable", Toast.LENGTH_SHORT).show() }
-    private fun xBtnBg(foc: Boolean) = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(if (foc) Color.argb(150, 255, 75, 85) else Color.argb(45, 255, 255, 255)); setStroke(dp(1f), if (foc) Color.WHITE else Color.argb(70, 255, 255, 255)) }
-    private fun btnBg(foc: Boolean) = GradientDrawable().apply { setColor(if (foc) Color.argb(85, 255, 255, 255) else Color.argb(36, 255, 255, 255)); cornerRadius = LauncherUtils.dpF(context, 14f); setStroke(dp(if (foc) 1.8f else 1f), if (foc) lp.accentColor else Color.argb(45, 255, 255, 255)) }
+    private fun xBtnBg(foc: Boolean) = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(if (foc) Color.argb(165, 255, 75, 85) else Color.argb(55, 255, 255, 255)); setStroke(dp(1f), if (foc) Color.WHITE else Color.argb(85, 255, 255, 255)) }
+    private fun glassCardBg(foc: Boolean) = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, if (foc) intArrayOf(Color.argb(115, 255, 255, 255), Color.argb(75, 255, 255, 255)) else intArrayOf(Color.argb(52, 255, 255, 255), Color.argb(26, 255, 255, 255))).apply { cornerRadius = LauncherUtils.dpF(context, 14f); setStroke(dp(if (foc) 2f else 1f), if (foc) lp.accentColor else Color.argb(65, 255, 255, 255)) }
     private fun text(v: String, sz: Float, col: Int, bld: Boolean) = TextView(context).apply { text = v; textSize = sz; setTextColor(col); if (bld) typeface = Typeface.DEFAULT_BOLD }
     private fun addLabel(panel: LinearLayout, lbl: String) = panel.addView(text(lbl.uppercase(Locale.ROOT), 9f, lp.accentColor, true).apply { letterSpacing = 0.09f }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8f); bottomMargin = dp(5f) })
     private fun dp(v: Float) = LauncherUtils.dpF(context, v).toInt()
