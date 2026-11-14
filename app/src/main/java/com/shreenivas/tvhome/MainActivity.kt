@@ -277,6 +277,15 @@ class MainActivity : Activity() {
         mainBody.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
 
         setupRightDrawer(contentArea)
+                val nudgeView = topNavBar.createFloatingNudgeView()
+        rootLayout.addView(
+            nudgeView,
+            FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.START).apply {
+                topMargin = dp(52)
+                leftMargin = dp(235)
+            }
+        )
+        
         setContentView(rootLayout)
         refreshApps(true)
     }
