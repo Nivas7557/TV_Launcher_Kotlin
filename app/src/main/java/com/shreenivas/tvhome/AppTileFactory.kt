@@ -70,8 +70,8 @@ object AppTileFactory {
         }
 
         val iconSize = minOf(
-            LauncherUtils.dp(ctx, if (isHeart) 40 else 48),
-            (tileHeight * (if (isHeart) 0.34f else 0.42f)).toInt()
+            LauncherUtils.dp(ctx, if (isHeart) 46 else 56),
+            (tileHeight * (if (isHeart) 0.38f else 0.46f)).toInt()
         )
         val icon = ImageView(ctx).apply {
             setImageDrawable(cachedIcon ?: app.loadIcon(pm))
@@ -84,13 +84,16 @@ object AppTileFactory {
         val appTitle = cachedLabel ?: app.loadLabel(pm).toString()
         val label = TextView(ctx).apply {
             text = appTitle
-            textSize = if (isHeart) 10.5f else 12f
+            textSize = if (isHeart) 13f else 15.5f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE)
+            setShadowLayer(3f, 0f, 1.5f, Color.argb(160, 0, 0, 0))
             gravity = Gravity.CENTER
             isSingleLine = true
             ellipsize = TextUtils.TruncateAt.END
         }
+
+        
         inner.addView(label, LinearLayout.LayoutParams(-1, -2))
         tile.addView(inner, FrameLayout.LayoutParams(-1, -1))
 
