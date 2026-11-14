@@ -48,10 +48,10 @@ class TopNavBar(
 
         // 1. Sleek Clock & Date
         val clockBox = LinearLayout(context).apply { orientation = VERTICAL }
-        dateTv = makeText("", 15f, Color.WHITE, true).apply {
-            setShadowLayer(4f, 0f, 2f, Color.argb(110, 0, 0, 0))
+        dateTv = makeText("", 19f, Color.WHITE, true).apply {
+            setShadowLayer(4f, 0f, 2f, Color.argb(140, 0, 0, 0))
         }
-        timeTv = makeText("", 11f, Color.argb(210, 220, 240, 255), false)
+        timeTv = makeText("", 14.5f, Color.argb(230, 225, 242, 255), true)
         clockBox.addView(dateTv)
         clockBox.addView(timeTv)
         addView(clockBox)
@@ -132,10 +132,10 @@ class TopNavBar(
     private fun makeGlassPill(label: String): LinearLayout {
         return LinearLayout(context).apply {
             gravity = Gravity.CENTER
-            setPadding(dp(18), 0, dp(18), 0)
+            setPadding(dp(20), 0, dp(20), 0)
             isFocusable = true
             isClickable = true
-            addView(makeText(label, 12f, Color.argb(245, 255, 255, 255), true))
+            addView(makeText(label, 14.5f, Color.argb(250, 255, 255, 255), true))
             background = pillBg(false)
             setOnFocusChangeListener { v, focused ->
                 LauncherUtils.applyFocusSpring(v, focused, 1.07f, 8f)
@@ -147,7 +147,7 @@ class TopNavBar(
     private fun makeCircleButton(symbol: String): TextView {
         return TextView(context).apply {
             text = symbol
-            textSize = 15.5f
+            textSize = 18.5f
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
             isFocusable = true
