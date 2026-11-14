@@ -39,8 +39,6 @@ class TopNavBar(
         fun onCustomizeClick()
         fun onQuickSettingsClick()
         fun onPowerClick()
-        fun createFloatingNudgeView(): TextView = nudgeOverlayBubble
-        
     }
 
     private lateinit var dateTv: TextView
@@ -88,7 +86,7 @@ class TopNavBar(
         gravity = Gravity.CENTER_VERTICAL
         clipChildren = false
         clipToPadding = false
-        setPadding(0, dp(4), 0, dp(22))
+        setPadding(0, dp(4), 0, dp(16))
 
         val clockBox = LinearLayout(context).apply { orientation = VERTICAL }
         dateTv = makeText("", 18f, Color.WHITE, true).apply {
@@ -104,10 +102,6 @@ class TopNavBar(
             LayoutParams(dp(1), dp(28)).apply { leftMargin = dp(14); rightMargin = dp(14) }
         )
 
-        val greetingWrapper = FrameLayout(context).apply {
-            clipChildren = false
-            clipToPadding = false
-        }
         greetingCard = GreetingShineCard(context, lp.userName, lp.greetingPhrase, lp.accentColor)
         addView(greetingCard, LayoutParams(-2, dp(40)))
 
@@ -121,25 +115,6 @@ class TopNavBar(
             visibility = View.GONE
         }
         greetingCard.attachOverlayBubble(nudgeOverlayBubble)
-
-        nudgeOverlayBubble = TextView(context).apply {
-            textSize = 10f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.argb(248, 255, 245, 225))
-            setPadding(dp(11), dp(3), dp(12), dp(3))
-            isSingleLine = true
-            elevation = LauncherUtils.dpF(context, 6f)
-            visibility = View.GONE
-        }
-        greetingWrapper.addView(
-            nudgeOverlayBubble,
-            FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.START).apply {
-                topMargin = dp(38)
-                leftMargin = dp(24)
-            }
-        )
-        greetingCard.attachOverlayBubble(nudgeOverlayBubble)
-        addView(greetingWrapper, LayoutParams(-2, dp(40)))
 
         addView(View(context), LayoutParams(0, 1, 1f))
 
@@ -208,7 +183,6 @@ class TopNavBar(
         )
         addView(wifiWrapper, LayoutParams(-2, dp(38)).apply { leftMargin = dp(8) })
 
-        // 4 Circle Action Icons matching Video (Alerts, Customize, Quick Settings, Power)
         addView(
             makeCircleButton("🔔").apply { setOnClickListener { callbacks.onAlertsClick() } },
             LayoutParams(dp(38), dp(38)).apply { leftMargin = dp(8) }
@@ -228,6 +202,8 @@ class TopNavBar(
 
         updateClockRamAndWifi()
     }
+
+    fun createFloatingNudgeView(): TextView = nudgeOverlayBubble
     private fun updateClockRamAndWifi() {
         val now = Date()
         dateTv.text = SimpleDateFormat("EEE d MMM", Locale.getDefault()).format(now)
