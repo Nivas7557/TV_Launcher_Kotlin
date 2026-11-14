@@ -39,6 +39,8 @@ class TopNavBar(
         fun onCustomizeClick()
         fun onQuickSettingsClick()
         fun onPowerClick()
+        fun createFloatingNudgeView(): TextView = nudgeOverlayBubble
+        
     }
 
     private lateinit var dateTv: TextView
@@ -107,10 +109,18 @@ class TopNavBar(
             clipToPadding = false
         }
         greetingCard = GreetingShineCard(context, lp.userName, lp.greetingPhrase, lp.accentColor)
-        greetingWrapper.addView(
-            greetingCard,
-            FrameLayout.LayoutParams(-2, dp(40), Gravity.TOP or Gravity.START)
-        )
+        addView(greetingCard, LayoutParams(-2, dp(40)))
+
+        nudgeOverlayBubble = TextView(context).apply {
+            textSize = 10.5f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.argb(250, 255, 246, 225))
+            setPadding(dp(12), dp(4), dp(14), dp(4))
+            isSingleLine = true
+            elevation = LauncherUtils.dpF(context, 10f)
+            visibility = View.GONE
+        }
+        greetingCard.attachOverlayBubble(nudgeOverlayBubble)
 
         nudgeOverlayBubble = TextView(context).apply {
             textSize = 10f
