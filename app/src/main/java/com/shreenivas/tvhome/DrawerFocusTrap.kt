@@ -26,7 +26,6 @@ object DrawerFocusTrap {
         val inDrawer = current != null
         if (current == null) current = topNavBar.findFocus()
 
-        // Sub-menu horizontal pill trapping (Unified tag: "pill_")
         if (inDrawer && current != null) {
             val tag = current.tag as? String ?: ""
             if (tag.startsWith("pill_")) {
@@ -70,7 +69,7 @@ object DrawerFocusTrap {
                 next.requestFocus()
                 return true
             }
-            return inDrawer // Trap focus inside drawer, prevent leaking to background grid
+            return inDrawer
         }
 
         drawerLayout.requestFocus()
