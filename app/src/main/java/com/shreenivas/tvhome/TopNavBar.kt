@@ -35,8 +35,10 @@ class TopNavBar(
     interface NavCallbacks {
         fun onVoiceSearch()
         fun onWifiClick()
+        fun onAlertsClick()
         fun onCustomizeClick()
         fun onQuickSettingsClick()
+        fun onPowerClick()
     }
 
     private lateinit var dateTv: TextView
@@ -100,7 +102,6 @@ class TopNavBar(
             LayoutParams(dp(1), dp(28)).apply { leftMargin = dp(14); rightMargin = dp(14) }
         )
 
-        // Greeting Card + Bottom-Right Floating Nudge Bubble Wrapper
         val greetingWrapper = FrameLayout(context).apply {
             clipChildren = false
             clipToPadding = false
@@ -197,12 +198,21 @@ class TopNavBar(
         )
         addView(wifiWrapper, LayoutParams(-2, dp(38)).apply { leftMargin = dp(8) })
 
+        // 4 Circle Action Icons matching Video (Alerts, Customize, Quick Settings, Power)
+        addView(
+            makeCircleButton("🔔").apply { setOnClickListener { callbacks.onAlertsClick() } },
+            LayoutParams(dp(38), dp(38)).apply { leftMargin = dp(8) }
+        )
         addView(
             makeCircleButton("✦").apply { setOnClickListener { callbacks.onCustomizeClick() } },
             LayoutParams(dp(38), dp(38)).apply { leftMargin = dp(8) }
         )
         addView(
             makeCircleButton("⚙").apply { setOnClickListener { callbacks.onQuickSettingsClick() } },
+            LayoutParams(dp(38), dp(38)).apply { leftMargin = dp(8) }
+        )
+        addView(
+            makeCircleButton("⏻").apply { setOnClickListener { callbacks.onPowerClick() } },
             LayoutParams(dp(38), dp(38)).apply { leftMargin = dp(8) }
         )
 
@@ -410,18 +420,22 @@ class TopNavBar(
 
     private fun makeCircleButton(symbol: String) = TextView(context).apply {
         text = symbol
-        textSize = 17f
+        textSize = 16.5f
         setTextColor(Color.WHITE)
         gravity = Gravity.CENTER
         isFocusable = true
         background = GradientDrawable().apply {
             shape = GradientDrawable.OVAL
-            setColor(Color.argb(52, 16, 26, 48))
-            setStroke(dp(1), Color.argb(90, 255, 255, 255))
+            setColor(Color.argb(56, 16, 26, 48))
+            setStroke(dp(1), Color.argb(95, 255, 255, 255))
         }
         setOnFocusChangeListener { v, f ->
-            LauncherUtils.applyFocusSpring(v, f, 1.12f, 8f)
-            if (symbol == "⚙") v.animate().rotation(if (f) 45f else 0f).setDuration(200).start()
+            LauncherUtils.applyFocusSpring(v, f, 1.14f, 8f)
+            when (symbol) {
+                "⚙" -> v.animate().rotation(if (f) 60f else 0f).setDuration(240).start()
+                "🔔" -> v.animate().rotation(if (f) 18f else 0f).setDuration(200).start()
+                "✦" -> v.animate().rotation(if (f) 45f else 0f).setDuration(240).start()
+            }
         }
     }
 
