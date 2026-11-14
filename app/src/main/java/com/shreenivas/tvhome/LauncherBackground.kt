@@ -72,7 +72,7 @@ object LauncherBackground {
         activeWallpaperView?.translationY = baseOffsetY - shift
         activeAuroraView?.setParallaxShift(shift)
     }
-    private class AuroraSkyView(
+        private class AuroraSkyView(
         ctx: Context,
         private var themeKey: String,
         private var accentColor: Int
@@ -94,14 +94,15 @@ object LauncherBackground {
         private var phase = 0f
         private var parallaxY = 0f
 
-        // 55 fixed stars (xRatio, yRatio, radiusDp, twinkleOffset)
+        private data class Star(val xRatio: Float, val yRatio: Float, val radiusDp: Float, val offset: Float)
+
         private val stars = List(55) { i ->
             val rnd = Random(i * 997 + 13)
-            floatArrayOf(
-                rnd.nextFloat(),
-                rnd.nextFloat() * 0.68f,
-                0.8f + rnd.nextFloat() * 1.6f,
-                rnd.nextFloat() * 6.28f
+            Star(
+                xRatio = rnd.nextFloat(),
+                yRatio = rnd.nextFloat() * 0.68f,
+                radiusDp = 0.8f + rnd.nextFloat() * 1.6f,
+                offset = rnd.nextFloat() * 6.28f
             )
         }
 
@@ -149,9 +150,9 @@ object LauncherBackground {
                 0f, 0f, w.toFloat(), h * 0.6f,
                 intArrayOf(
                     Color.argb(0, 46, 232, 165),
-                    Color.argb(95, 42, 235, 168),   // Aurora Emerald Green
-                    Color.argb(105, 85, 175, 255),  // Aurora Cyan Blue
-                    Color.argb(90, 175, 95, 255),   // Aurora Violet-Magenta
+                    Color.argb(95, 42, 235, 168),
+                    Color.argb(105, 85, 175, 255),
+                    Color.argb(90, 175, 95, 255),
                     Color.argb(0, 175, 95, 255)
                 ),
                 floatArrayOf(0f, 0.25f, 0.52f, 0.78f, 1f),
@@ -171,9 +172,9 @@ object LauncherBackground {
             // 2. Twinkling Stars
             val d = resources.displayMetrics.density
             for (s in stars) {
-                val twinkle = 0.45f + 0.55f * sin(phase * 2f + s[3])
+                val twinkle = 0.45f + 0.55f * sin(phase * 2f + s.offset)
                 starPaint.color = Color.argb((twinkle * 235).toInt(), 235, 245, 255)
-                canvas.drawCircle(s[0] * w, s[1] * h - parallaxY * 0.4f, s[2] * d, starPaint)
+                canvas.drawCircle(s.xRatio * w, s.yRatio * h - parallaxY * 0.4f, s.radiusDp * d, starPaint)
             }
 
             // 3. Glowing Crescent Moon (Top-Right Sky)
