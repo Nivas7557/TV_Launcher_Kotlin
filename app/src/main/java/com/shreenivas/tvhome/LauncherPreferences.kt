@@ -18,6 +18,8 @@ class LauncherPreferences(context: Context) {
         const val PREF_PANEL_WIDTH = "panel_width_pct"
         const val PREF_WALLPAPER = "wallpaper_uri"
         const val PREF_FAVORITES = "favorites"
+        const val PREF_FAVORITES_ORDER = "favorites_ordered_list"
+        const val PREF_HIDDEN_APPS = "hidden_apps_set"
         const val PREF_USER_NAME = "launcher_user_name"
         const val PREF_GREETING_PHRASE = "launcher_greeting_phrase"
         const val PREF_SORT_ASC = "sort_ascending"
@@ -69,12 +71,43 @@ class LauncherPreferences(context: Context) {
         get() = prefs.getBoolean(PREF_SORT_ASC, true)
         set(value) = prefs.edit().putBoolean(PREF_SORT_ASC, value).apply()
 
-    fun getFavorites(): Set<String> {
-        return prefs.getStringSet(PREF_FAVORITES, emptySet()) ?: emptySet()
+    // Preserves exact custom user ordering for Favorites
+    fun getOrderedFavorites(): MutableList<String> {
+        val raw = prefs.getString(PREF_FAVORITES_ORDER, null)
+        if (!raw.isNullOrEmpty()) {
+            return raw.split(",").filter { it.isNotBlank() }.toMutableList()
+        }
+        val legacy = prefs.getStringSet(PREF_FAVORITES, emptySet()) ?: emptySet()
+        return legacy.toMutableList()
     }
 
-    fun setFavorites(favs: Set<String>) {
-        prefs.edit().putStringSet(PREF_FAVORITES, HashSet(favs)).apply()
+    fun getFavorites(): Set<String> = getOrderedFavorites().toSet()
+
+    fun setFavorites(favs: Collection<String>) {
+        val list = favs.distinct()
+        prefs.edit()
+            .putString(PREF_FAVORITES_ORDER, list.joinToString(","))
+            .putStringSet(PREF_FAVORITES, list.toSet())
+            .apply()
+    }
+
+    fun moveFavorite(pkg: String, delta: Int): Boolean {
+        val list = getOrderedFavorites()
+        val idx = list.indexOf(pkg)
+        val target = idx + delta
+        if (idx < 0 || target !in list.indices) return false
+        list.removeAt(idx)
+        list.add(target, pkg)
+        setFavorites(list)
+        return true
+    }
+
+    fun getHiddenApps(): MutableSet<String> {
+        return HashSet(prefs.getStringSet(PREF_HIDDEN_APPS, emptySet()) ?: emptySet())
+    }
+
+    fun setHiddenApps(hidden: Set<String>) {
+        prefs.edit().putStringSet(PREF_HIDDEN_APPS, HashSet(hidden)).apply()
     }
 
     fun getAccentColorValue(name: String?): Int {
