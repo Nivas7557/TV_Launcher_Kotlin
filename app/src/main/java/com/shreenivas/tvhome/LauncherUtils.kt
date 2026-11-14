@@ -7,12 +7,13 @@ import android.content.pm.ResolveInfo
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.view.View
-import android.view.animation.PathInterpolator
+import android.view.animation.DecelerateInterpolator
+import android.view.animation.OvershootInterpolator
 import kotlin.math.roundToInt
 
 object LauncherUtils {
-    val FLUID_SPRING = PathInterpolator(0.2f, 1.25f, 0.35f, 1f)
-    val SILKY_EASE = PathInterpolator(0.16f, 1.0f, 0.30f, 1f)
+    val FLUID_SPRING = OvershootInterpolator(1.45f)
+    val SILKY_EASE = DecelerateInterpolator(1.8f)
 
     fun addApps(pm: PackageManager, category: String, out: MutableMap<String, ResolveInfo>) {
         val query = Intent(Intent.ACTION_MAIN).apply { addCategory(category) }
@@ -29,7 +30,7 @@ object LauncherUtils {
         val dm = context.resources.displayMetrics
         val maxSidePx = maxOf(dm.widthPixels, dm.heightPixels)
         val widthDp = maxSidePx / dm.density
-        return (widthDp / 960f).coerceIn(0.88f, 1.15f)
+        return (widthDp / 960f).coerceIn(0.85f, 1.12f)
     }
 
     fun dp(context: Context, value: Int): Int {
@@ -54,14 +55,14 @@ object LauncherUtils {
         }
     }
 
-    fun applyFocusSpring(view: View, focused: Boolean, scale: Float = 1.04f, elevationDp: Float = 6f) {
+    fun applyFocusSpring(view: View, focused: Boolean, scale: Float = 1.06f, elevationDp: Float = 8f) {
         view.animate().cancel()
         view.animate()
             .scaleX(if (focused) scale else 1f)
             .scaleY(if (focused) scale else 1f)
             .translationZ(if (focused) dpF(view.context, elevationDp) else 0f)
-            .setDuration(if (focused) 180L else 130L)
-            .setInterpolator(FLUID_SPRING)
+            .setDuration(if (focused) 210L else 140L)
+            .setInterpolator(if (focused) FLUID_SPRING else SILKY_EASE)
             .start()
     }
 
