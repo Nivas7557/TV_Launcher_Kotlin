@@ -7,6 +7,8 @@ import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffXfermode
 import android.graphics.RadialGradient
 import android.graphics.Shader
 import android.net.Uri
@@ -66,7 +68,7 @@ object LauncherBackground {
     }
 
     fun onScrollParallax(scrollY: Int) {
-        val shift = minOf(30f, scrollY * 0.10f)
+        val shift = minOf(28f, scrollY * 0.10f)
         activeWallpaperView?.translationY = baseOffsetY - shift
         activeAuroraView?.setParallaxShift(shift)
     }
@@ -78,28 +80,37 @@ object LauncherBackground {
     ) : View(ctx) {
 
         private val skyPaint = Paint(Paint.DITHER_FLAG)
-        private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+        private val auroraGlow1 = Paint(Paint.ANTI_ALIAS_FLAG)
+        private val auroraGlow2 = Paint(Paint.ANTI_ALIAS_FLAG)
         private val ribbonPaint = Paint(Paint.ANTI_ALIAS_FLAG)
         private val starPaint = Paint(Paint.ANTI_ALIAS_FLAG)
         private val moonHaloPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-        private val moonPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(255, 250, 232) }
-        private val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(8, 13, 32) }
+        private val moonPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(255, 252, 235) }
+        private val moonCutPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
+        }
 
         private val wavePath = Path()
         private var flowAnim: ValueAnimator? = null
         private var phase = 0f
         private var parallaxY = 0f
 
-        private data class Star(val xRatio: Float, val yRatio: Float, val radiusPx: Float, val offset: Float)
+        private data class Star(val xRatio: Float, val yRatio: Float, val radiusPx: Float, val offset: Float, val tint: Int)
 
-        private val stars = List(45) { i ->
-            val rnd = Random(i * 1013 + 7)
+        private val stars = List(65) { i ->
+            val rnd = Random(i * 1013 + 19)
             val d = resources.displayMetrics.density
+            val tint = when (i % 4) {
+                0 -> Color.rgb(255, 240, 200)
+                1 -> Color.rgb(185, 225, 255)
+                else -> Color.WHITE
+            }
             Star(
                 xRatio = rnd.nextFloat(),
-                yRatio = rnd.nextFloat() * 0.65f,
-                radiusPx = (0.7f + rnd.nextFloat() * 1.1f) * d,
-                offset = rnd.nextFloat() * 6.28f
+                yRatio = rnd.nextFloat() * 0.72f,
+                radiusPx = (0.7f + rnd.nextFloat() * 1.3f) * d,
+                offset = rnd.nextFloat() * 6.28f,
+                tint = tint
             )
         }
 
@@ -124,7 +135,7 @@ object LauncherBackground {
 
             flowAnim?.cancel()
             flowAnim = ValueAnimator.ofFloat(0f, 6.28318f).apply {
-                duration = 28000L
+                duration = 24000L
                 repeatCount = ValueAnimator.INFINITE
                 interpolator = LinearInterpolator()
                 addUpdateListener {
@@ -138,36 +149,47 @@ object LauncherBackground {
         private fun buildShaders(w: Int, h: Int) {
             if (w <= 0 || h <= 0) return
             val baseColors = TileThemePalette.getWallpaperGradient(themeKey)
-            shadowPaint.color = Color.rgb(6, 10, 26)
 
             skyPaint.shader = LinearGradient(
                 0f, 0f, 0f, h.toFloat(),
-                intArrayOf(Color.rgb(5, 8, 22), baseColors[0], baseColors[2]),
+                intArrayOf(Color.rgb(6, 10, 32), baseColors[0], baseColors[2]),
+                floatArrayOf(0f, 0.55f, 1f),
+                Shader.TileMode.CLAMP
+            )
+
+            // Vibrant Multi-Color Aurora Borealis Glows (Emerald + Cyan + Royal Violet)
+            auroraGlow1.shader = RadialGradient(
+                w * 0.30f, h * 0.28f, w * 0.52f,
+                intArrayOf(
+                    Color.argb(115, 20, 235, 165),
+                    Color.argb(65, 35, 175, 255),
+                    Color.TRANSPARENT
+                ),
+                floatArrayOf(0f, 0.50f, 1f),
+                Shader.TileMode.CLAMP
+            )
+
+            auroraGlow2.shader = RadialGradient(
+                w * 0.68f, h * 0.34f, w * 0.50f,
+                intArrayOf(
+                    Color.argb(105, 155, 75, 255),
+                    Color.argb(55, 235, 85, 175),
+                    Color.TRANSPARENT
+                ),
                 floatArrayOf(0f, 0.52f, 1f),
                 Shader.TileMode.CLAMP
             )
 
-            // Soft GPU-accelerated Aurora Glow (Zero CPU Blur cost!)
-            glowPaint.shader = RadialGradient(
-                w * 0.45f, h * 0.30f, w * 0.65f,
-                intArrayOf(
-                    Color.argb(62, 42, 225, 168),
-                    Color.argb(42, 85, 165, 255),
-                    Color.TRANSPARENT
-                ),
-                floatArrayOf(0f, 0.48f, 1f),
-                Shader.TileMode.CLAMP
-            )
-
             ribbonPaint.shader = LinearGradient(
-                0f, h * 0.18f, 0f, h * 0.56f,
+                0f, h * 0.14f, w.toFloat(), h * 0.52f,
                 intArrayOf(
-                    Color.TRANSPARENT,
-                    Color.argb(48, 48, 232, 172),
-                    Color.argb(38, 120, 110, 255),
-                    Color.TRANSPARENT
+                    Color.argb(0, 35, 235, 175),
+                    Color.argb(95, 35, 240, 175),
+                    Color.argb(95, 75, 170, 255),
+                    Color.argb(85, 175, 85, 255),
+                    Color.argb(0, 175, 85, 255)
                 ),
-                floatArrayOf(0f, 0.38f, 0.72f, 1f),
+                floatArrayOf(0f, 0.25f, 0.52f, 0.78f, 1f),
                 Shader.TileMode.CLAMP
             )
         }
@@ -177,52 +199,65 @@ object LauncherBackground {
             val h = height.toFloat()
             if (w <= 0f || h <= 0f) return
 
-            // 1. Deep Night Sky
+            // 1. Rich Midnight Cosmos Sky
             canvas.drawRect(0f, 0f, w, h, skyPaint)
 
-            // 2. Soft Ambient Aurora Glow
-            canvas.drawRect(0f, 0f, w, h * 0.75f, glowPaint)
+            // 2. Colorful Aurora Ambient Clouds
+            canvas.drawRect(0f, 0f, w, h * 0.85f, auroraGlow1)
+            canvas.drawRect(0f, 0f, w, h * 0.85f, auroraGlow2)
 
-            // 3. Gentle Flowing Aurora Curtain
+            // 3. Flowing Aurora Ribbon Curtain
             wavePath.reset()
-            val baseY = h * 0.24f - parallaxY * 0.5f
-            val steps = 10
+            val baseY = h * 0.22f - parallaxY * 0.45f
+            val steps = 12
             val stepW = w / steps
             wavePath.moveTo(0f, baseY)
             for (i in 0..steps) {
                 val x = i * stepW
-                val y = baseY + sin(phase + i * 0.5f) * (h * 0.04f)
+                val y = baseY + sin(phase + i * 0.5f) * (h * 0.045f) + cos(phase * 0.6f + i * 0.3f) * (h * 0.02f)
                 wavePath.lineTo(x, y)
             }
-            wavePath.lineTo(w, baseY + h * 0.30f)
-            wavePath.lineTo(0f, baseY + h * 0.30f)
+            wavePath.lineTo(w, baseY + h * 0.28f)
+            wavePath.lineTo(0f, baseY + h * 0.28f)
             wavePath.close()
             canvas.drawPath(wavePath, ribbonPaint)
 
-            // 4. Twinkling Stars
+            // 4. Twinkling Multi-Tone Stars
             for (s in stars) {
-                val twinkle = 0.45f + 0.55f * sin(phase * 2f + s.offset)
-                starPaint.color = Color.argb((twinkle * 210).toInt(), 225, 240, 255)
+                val twinkle = 0.40f + 0.60f * sin(phase * 2.2f + s.offset)
+                starPaint.color = LauncherUtils.withAlpha(s.tint, (twinkle * 235).toInt())
                 canvas.drawCircle(s.xRatio * w, s.yRatio * h - parallaxY * 0.3f, s.radiusPx, starPaint)
             }
 
-            // 5. Fast GPU Crescent Moon (No saveLayer overhead!)
+            // 5. Crescent Moon Positioned Cleanly Below Top Bar (Right Sky) with Silver Moonlight Halo
             val d = resources.displayMetrics.density
-            val moonX = w * 0.85f
-            val moonY = h * 0.16f - parallaxY * 0.4f
-            val moonR = 18f * d
-            moonHaloPaint.shader = RadialGradient(
-                moonX, moonY, moonR * 3.5f,
-                Color.argb(55, 255, 248, 215), Color.TRANSPARENT, Shader.TileMode.CLAMP
-            )
-            canvas.drawCircle(moonX, moonY, moonR * 3.5f, moonHaloPaint)
-            canvas.drawCircle(moonX, moonY, moonR, moonPaint)
-            canvas.drawCircle(moonX + moonR * 0.42f, moonY - moonR * 0.20f, moonR * 0.86f, shadowPaint)
-        }
+            val moonX = w * 0.925f
+            val moonY = h * 0.31f - parallaxY * 0.35f
+            val moonR = 17f * d
 
+            // Soft Silvery-Blue Moonlight Spread
+            moonHaloPaint.shader = RadialGradient(
+                moonX, moonY, moonR * 6.5f,
+                intArrayOf(
+                    Color.argb(120, 235, 245, 255),
+                    Color.argb(48, 175, 210, 255),
+                    Color.TRANSPARENT
+                ),
+                floatArrayOf(0f, 0.38f, 1f),
+                Shader.TileMode.CLAMP
+            )
+            canvas.drawCircle(moonX, moonY, moonR * 6.5f, moonHaloPaint)
+
+            // True Transparent Crescent Cutout (No Black Circle!)
+            val layerId = canvas.saveLayer(moonX - moonR * 2, moonY - moonR * 2, moonX + moonR * 2, moonY + moonR * 2, null)
+            canvas.drawCircle(moonX, moonY, moonR, moonPaint)
+            canvas.drawCircle(moonX - moonR * 0.44f, moonY - moonR * 0.20f, moonR * 0.85f, moonCutPaint)
+            canvas.restoreToCount(layerId)
+        }
         override fun onDetachedFromWindow() {
-            super.onDetachedFromWindow()
+        super.onDetachedFromWindow()
             flowAnim?.cancel()
         }
     }
 }
+    
