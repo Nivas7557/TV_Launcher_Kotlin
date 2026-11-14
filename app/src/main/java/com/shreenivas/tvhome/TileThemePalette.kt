@@ -16,26 +16,26 @@ object TileThemePalette {
     )
 
     fun getTopBottomColors(key: String, focused: Boolean): IntArray {
-        val aTop = if (focused) 205 else 145
-        val aBot = if (focused) 235 else 175
+        val aTop = if (focused) 225 else 155
+        val aBot = if (focused) 245 else 185
         return when (key) {
-            "sapphire" -> intArrayOf(Color.argb(aTop, 36, 118, 196), Color.argb(aBot, 18, 56, 112))
-            "emerald" -> intArrayOf(Color.argb(aTop, 32, 148, 114), Color.argb(aBot, 14, 74, 60))
-            "rose" -> intArrayOf(Color.argb(aTop, 188, 68, 112), Color.argb(aBot, 104, 32, 64))
-            "amethyst" -> intArrayOf(Color.argb(aTop, 118, 72, 198), Color.argb(aBot, 60, 34, 112))
-            "gold" -> intArrayOf(Color.argb(aTop, 58, 66, 84), Color.argb(aBot, 32, 38, 50))
-            else -> intArrayOf(Color.argb(aTop, 74, 88, 148), Color.argb(aBot, 44, 52, 98))
+            "sapphire" -> intArrayOf(Color.argb(aTop, 42, 132, 224), Color.argb(aBot, 22, 68, 138))
+            "emerald" -> intArrayOf(Color.argb(aTop, 36, 165, 128), Color.argb(aBot, 16, 86, 68))
+            "rose" -> intArrayOf(Color.argb(aTop, 205, 76, 124), Color.argb(aBot, 118, 36, 72))
+            "amethyst" -> intArrayOf(Color.argb(aTop, 132, 82, 218), Color.argb(aBot, 68, 38, 128))
+            "gold" -> intArrayOf(Color.argb(aTop, 64, 74, 96), Color.argb(aBot, 36, 42, 58))
+            else -> intArrayOf(Color.argb(aTop, 68, 96, 178), Color.argb(aBot, 42, 62, 124))
         }
     }
 
     fun getWallpaperGradient(key: String): IntArray {
         return when (key) {
-            "sapphire" -> intArrayOf(Color.rgb(14, 48, 92), Color.rgb(22, 74, 128), Color.rgb(10, 28, 58))
-            "emerald" -> intArrayOf(Color.rgb(12, 58, 52), Color.rgb(20, 86, 72), Color.rgb(8, 34, 30))
-            "rose" -> intArrayOf(Color.rgb(66, 22, 52), Color.rgb(94, 30, 68), Color.rgb(36, 12, 30))
-            "amethyst" -> intArrayOf(Color.rgb(38, 26, 84), Color.rgb(58, 38, 118), Color.rgb(22, 16, 52))
-            "gold" -> intArrayOf(Color.rgb(24, 28, 38), Color.rgb(36, 42, 56), Color.rgb(16, 18, 26))
-            else -> intArrayOf(Color.rgb(34, 42, 92), Color.rgb(48, 56, 116), Color.rgb(22, 28, 66))
+            "sapphire" -> intArrayOf(Color.rgb(16, 56, 112), Color.rgb(24, 86, 148), Color.rgb(12, 34, 72))
+            "emerald" -> intArrayOf(Color.rgb(14, 66, 58), Color.rgb(22, 96, 80), Color.rgb(10, 40, 36))
+            "rose" -> intArrayOf(Color.rgb(74, 24, 58), Color.rgb(106, 34, 76), Color.rgb(42, 14, 34))
+            "amethyst" -> intArrayOf(Color.rgb(42, 28, 96), Color.rgb(66, 42, 134), Color.rgb(24, 18, 58))
+            "gold" -> intArrayOf(Color.rgb(26, 30, 42), Color.rgb(40, 46, 62), Color.rgb(18, 20, 30))
+            else -> intArrayOf(Color.rgb(28, 48, 118), Color.rgb(44, 72, 158), Color.rgb(18, 32, 84))
         }
     }
 }
