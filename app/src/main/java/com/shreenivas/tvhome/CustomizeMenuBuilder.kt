@@ -44,9 +44,19 @@ object CustomizeMenuBuilder {
 
     fun closeSubMenuAndNavigate(moveDown: Boolean) {
         val closedKey = openSubMenu
-        closeSubMenuWithAnimation {
-            val panel = activePanelRef ?: return@closeSubMenuWithAnimation
-            val parentCard = panel.findViewWithTag<View>("acc_$closedKey") ?: return@closeSubMenuWithAnimation
+        val panel = activePanelRef ?: return
+        val parentCard = panel.findViewWithTag<View>("acc_$closedKey")
+        val box = activeSubBoxRef
+
+        openSubMenu = ""
+        activeSubBoxRef = null
+        lastFocusedTag = "acc_$closedKey"
+
+        if (box != null && box.parent == panel) {
+            panel.removeView(box)
+        }
+
+        if (parentCard != null) {
             if (!moveDown) {
                 parentCard.requestFocus()
             } else {
@@ -65,7 +75,8 @@ object CustomizeMenuBuilder {
         onEditProfile: () -> Unit,
         onOpenWallpaper: () -> Unit,
         onBackToApps: () -> Unit
-    ) {
+    ) 
+        {
         activePanelRef = panel
         activeCloseDrawerRef = onBackToApps
         activeSubBoxRef = null
@@ -77,7 +88,7 @@ object CustomizeMenuBuilder {
         panel.layoutTransition = LayoutTransition().apply { setDuration(180L) }
         panel.removeAllViews()
         val widthPct = lp.panelWidthPct
-        val narrowMode = widthPct <= 25
+        val narrowMode = widthPct <= 20
 
         addHeader(ctx, panel, "USER PROFILE & GREETINGS")
         addWideCard(ctx, panel, "card_profile", "👤", "User Profile & Greetings",
