@@ -11,88 +11,207 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.text.TextUtils
 import android.view.Gravity
+import android.view.View
+import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.LinearInterpolator
 import android.widget.LinearLayout
 import android.widget.TextView
 import java.util.Calendar
-import java.util.Locale
 
 class GreetingShineCard(
     ctx: Context,
-    userName: String,
-    customPhrase: String,
+    private var userName: String,
+    private var customPhrase: String,
     private var accentColor: Int
 ) : LinearLayout(ctx) {
 
+    private val mainPill = LinearLayout(ctx)
     private val greetingTv = ShimmerTextView(ctx)
-    private val subTagTv = TextView(ctx)
+    private val nudgeBubble = TextView(ctx)
+    private var nudgeAnimator: ValueAnimator? = null
 
     init {
-        orientation = VERTICAL
+        orientation = HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
-        setPadding(dp(18), dp(5), dp(20), dp(5))
-        applyGlassPill()
+        clipChildren = false
+        clipToPadding = false
+
+        mainPill.apply {
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(20), dp(7), dp(22), dp(7))
+        }
 
         greetingTv.apply {
-            text = formatGreeting(userName, customPhrase)
-            textSize = 12.5f
+            textSize = 16.5f
             letterSpacing = 0.04f
             isSingleLine = true
             ellipsize = TextUtils.TruncateAt.END
-            maxWidth = dp(320)
+            maxWidth = dp(380)
             typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
         }
-        addView(greetingTv)
+        mainPill.addView(greetingTv)
+        addView(mainPill)
 
-        subTagTv.apply {
-            text = "✦  SMART TV"
-            textSize = 8.5f
-            letterSpacing = 0.12f
-            setTextColor(Color.argb(185, 210, 230, 255))
+        nudgeBubble.apply {
+            textSize = 12.5f
             typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.argb(245, 255, 240, 220))
+            setPadding(dp(14), dp(6), dp(16), dp(6))
+            isFocusable = false
+            isClickable = false
+            visibility = View.GONE
         }
-        addView(subTagTv)
+        addView(nudgeBubble, LayoutParams(-2, -2).apply { leftMargin = dp(10) })
+
+        refreshState()
     }
 
-    fun updateGreeting(userName: String, customPhrase: String) {
-        greetingTv.text = formatGreeting(userName, customPhrase)
+    fun updateGreeting(name: String, phrase: String) {
+        userName = name
+        customPhrase = phrase
+        refreshState()
     }
 
     fun setAccentColor(accent: Int) {
         accentColor = accent
-        applyGlassPill()
+        refreshState()
     }
 
-    private fun formatGreeting(userName: String, customPhrase: String): String {
-        val prefix = if (customPhrase.trim().isNotEmpty()) {
-            "✦  ${customPhrase.trim()}"
-        } else {
-            getTimeGreeting()
-        }
-        return "$prefix, $userName"
-    }
+    private fun refreshState() {
+        val cal = Calendar.getInstance()
+        val totalMins = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
 
-    private fun getTimeGreeting(): String {
-        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-        return when {
-            hour < 12 -> "☀  Good Morning"
-            hour < 17 -> "🌤  Good Afternoon"
-            else -> "🌙  Good Night"
-        }
-    }
+        val (prefix, topCol, botCol, strokeCol) = getTimeAtmosphere(totalMins)
+        val finalLead = if (customPhrase.trim().isNotEmpty()) "✦  ${customPhrase.trim()}" else prefix
+        greetingTv.text = "$finalLead, $userName"
 
-    private fun applyGlassPill() {
-        val pill = GradientDrawable(
+        mainPill.background = GradientDrawable(
             GradientDrawable.Orientation.TOP_BOTTOM,
-            intArrayOf(Color.argb(68, 255, 255, 255), Color.argb(26, 255, 255, 255))
+            intArrayOf(topCol, botCol)
         ).apply {
-            cornerRadius = LauncherUtils.dpF(context, 18f)
-            setStroke(dp(1), Color.argb(135, 255, 215, 110))
+            cornerRadius = LauncherUtils.dpF(context, 22f)
+            setStroke(dp(1), strokeCol)
         }
-        background = pill
+
+        updateNudgeBubble(totalMins)
+    }
+
+    private data class Atmosphere(val greeting: String, val top: Int, val bot: Int, val stroke: Int)
+
+    private fun getTimeAtmosphere(mins: Int): Atmosphere = when {
+        mins in 240..359 -> Atmosphere(
+            "🌅  Got up early! Good Morning",
+            Color.argb(85, 255, 195, 110),
+            Color.argb(35, 255, 150, 80),
+            Color.argb(165, 255, 210, 125)
+        )
+        mins in 360..719 -> Atmosphere(
+            "☀  Good Morning",
+            Color.argb(75, 255, 225, 140),
+            Color.argb(30, 255, 200, 110),
+            Color.argb(145, 255, 220, 120)
+        )
+        mins in 720..959 -> Atmosphere(
+            "🌤  Good Afternoon",
+            Color.argb(68, 160, 220, 255),
+            Color.argb(28, 110, 180, 255),
+            Color.argb(135, 175, 225, 255)
+        )
+        mins in 960..1139 -> Atmosphere(
+            "🌇  Good Evening",
+            Color.argb(85, 255, 145, 110),
+            Color.argb(38, 190, 95, 145),
+            Color.argb(165, 255, 165, 120)
+        )
+        else -> Atmosphere(
+            "🌙  Good Night",
+            Color.argb(75, 115, 130, 220),
+            Color.argb(35, 65, 80, 165),
+            Color.argb(145, 170, 185, 255)
+        )
+    }
+    private fun updateNudgeBubble(mins: Int) {
+        val pool: List<String>? = when {
+            mins >= 1350 -> listOf(
+                "🌙  Even the TV needs some rest now...",
+                "🔋  Human battery at 10% • Time to recharge!",
+                "✨  Tomorrow's plans start with tonight's sleep",
+                "🛋️  One last episode... or actual sleep?",
+                "💤  Winding down • Cozy blanket awaits"
+            )
+            mins in 0..239 -> listOf(
+                "🦉  Midnight Owl detected! Dreams on, TV off",
+                "🚫  No TV zone! Your eyes deserve a break now",
+                "🌌  The stars are asleep, why are you awake?",
+                "⚡  Heads up: Morning alarm won't show mercy!",
+                "🛌  Past midnight • Time to call it a night"
+            )
+            mins in 240..359 -> listOf(
+                "🌅  Early bird mode! Peaceful morning ahead",
+                "☕  Up before the sun! Fresh start today",
+                "✨  Quiet morning, clear mind • Great going!"
+            )
+            else -> null
+        }
+
+        if (pool == null) {
+            nudgeBubble.visibility = View.GONE
+            nudgeAnimator?.cancel()
+            nudgeAnimator = null
+            return
+        }
+
+        val index = ((mins / 15) % pool.size).coerceAtLeast(0)
+        nudgeBubble.text = pool[index]
+        nudgeBubble.visibility = View.VISIBLE
+
+        val isMidnight = mins in 0..239
+        val isEarly = mins in 240..359
+        val topTint = when {
+            isMidnight -> Color.argb(105, 255, 95, 130)
+            isEarly -> Color.argb(95, 255, 190, 95)
+            else -> Color.argb(95, 135, 110, 235)
+        }
+        val strokeTint = when {
+            isMidnight -> Color.argb(175, 255, 160, 180)
+            isEarly -> Color.argb(175, 255, 220, 145)
+            else -> Color.argb(170, 185, 170, 255)
+        }
+
+        nudgeBubble.background = GradientDrawable(
+            GradientDrawable.Orientation.TL_BR,
+            intArrayOf(topTint, Color.argb(48, 25, 35, 65))
+        ).apply {
+            cornerRadii = floatArrayOf(
+                dpF(18f), dpF(18f),
+                dpF(18f), dpF(18f),
+                dpF(18f), dpF(18f),
+                dpF(4f), dpF(4f)
+            )
+            setStroke(dp(1), strokeTint)
+        }
+
+        if (nudgeAnimator == null) {
+            nudgeAnimator = ValueAnimator.ofFloat(0.86f, 1.0f).apply {
+                duration = 2200L
+                repeatMode = ValueAnimator.REVERSE
+                repeatCount = ValueAnimator.INFINITE
+                interpolator = AccelerateDecelerateInterpolator()
+                addUpdateListener { nudgeBubble.alpha = it.animatedValue as Float }
+                start()
+            }
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        nudgeAnimator?.cancel()
+        nudgeAnimator = null
     }
 
     private fun dp(v: Int) = LauncherUtils.dp(context, v)
+    private fun dpF(v: Float) = LauncherUtils.dpF(context, v)
 
     private class ShimmerTextView(ctx: Context) : TextView(ctx) {
         private var shader: LinearGradient? = null
@@ -101,8 +220,8 @@ class GreetingShineCard(
         private var anim: ValueAnimator? = null
 
         init {
-            setTextColor(Color.rgb(255, 224, 130))
-            setShadowLayer(4f, 0f, 1.5f, Color.argb(140, 0, 0, 0))
+            setTextColor(Color.rgb(255, 232, 155))
+            setShadowLayer(4f, 0f, 1.5f, Color.argb(150, 0, 0, 0))
         }
 
         override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -111,13 +230,11 @@ class GreetingShineCard(
             shader = LinearGradient(
                 -w * 0.4f, 0f, 0f, 0f,
                 intArrayOf(
-                    Color.rgb(245, 198, 75),
-                    Color.rgb(255, 232, 135),
-                    Color.rgb(255, 252, 220),
-                    Color.rgb(255, 232, 135),
-                    Color.rgb(245, 198, 75)
+                    Color.rgb(245, 200, 80),
+                    Color.rgb(255, 252, 225),
+                    Color.rgb(245, 200, 80)
                 ),
-                floatArrayOf(0f, 0.35f, 0.5f, 0.65f, 1f),
+                floatArrayOf(0f, 0.5f, 1f),
                 Shader.TileMode.CLAMP
             )
             paint.shader = shader

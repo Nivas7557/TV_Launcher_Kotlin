@@ -8,10 +8,11 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
-import android.graphics.Color
-import android.graphics.drawable.GradientDrawable
+import android.content.res.Configuration
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.speech.RecognizerIntent
 import android.view.Gravity
 import android.view.KeyEvent
@@ -48,6 +49,12 @@ class MainActivity : Activity() {
         }
     }
 
+    override fun attachBaseContext(newBase: Context) {
+        val config = Configuration(newBase.resources.configuration)
+        config.fontScale = LauncherUtils.calculateAdaptiveScale(newBase)
+        super.attachBaseContext(newBase.createConfigurationContext(config))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         lp = LauncherPreferences(this)
@@ -65,6 +72,18 @@ class MainActivity : Activity() {
 
         buildScreen()
 
+        NightNudgeReceiver.scheduleNextNudge(this)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+            try {
+                val overlayIntent = Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:$packageName")
+                )
+                startActivity(overlayIntent)
+            } catch (_: Exception) {
+            }
+        }
+
         val filter = IntentFilter().apply {
             addAction(Intent.ACTION_PACKAGE_ADDED)
             addAction(Intent.ACTION_PACKAGE_REMOVED)
@@ -80,17 +99,27 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        try { unregisterReceiver(pkgReceiver) } catch (_: Exception) {}
+        try {
+            unregisterReceiver(pkgReceiver)
+        } catch (_: Exception) {
+        }
     }
 
     override fun onResume() {
         super.onResume()
-        if (::appGrid.isInitialized) refreshApps(!sideDrawer.isOpen)
+        if (::appGrid.isInitialized) {
+            refreshApps(!sideDrawer.isOpen)
+        }
     }
 
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
-        if (sideDrawer.isOpen) sideDrawer.close() else @Suppress("DEPRECATION") super.onBackPressed()
+        if (sideDrawer.isOpen) {
+            sideDrawer.close()
+        } else {
+            @Suppress("DEPRECATION")
+            super.onBackPressed()
+        }
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
@@ -108,7 +137,8 @@ class MainActivity : Activity() {
             val uri = data.data!!
             try {
                 contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            } catch (_: Exception) {}
+            } catch (_: Exception) {
+            }
 
             lp.prefs.edit()
                 .putString(LauncherPreferences.PREF_WALLPAPER, uri.toString())
@@ -148,12 +178,21 @@ class MainActivity : Activity() {
 
         topNavBar = TopNavBar(this, lp, object : TopNavBar.NavCallbacks {
             override fun onVoiceSearch() {
-                val actions = listOf(Intent.ACTION_ASSIST, RecognizerIntent.ACTION_WEB_SEARCH, Intent.ACTION_VOICE_COMMAND)
+                val actions = listOf(
+                    Intent.ACTION_ASSIST,
+                    RecognizerIntent.ACTION_WEB_SEARCH,
+                    Intent.ACTION_VOICE_COMMAND
+                )
                 for (act in actions) {
-                    try { startActivity(Intent(act)); return } catch (_: Exception) {}
+                    try {
+                        startActivity(Intent(act))
+                        return
+                    } catch (_: Exception) {
+                    }
                 }
                 Toast.makeText(this@MainActivity, "Voice Assistant not installed", Toast.LENGTH_SHORT).show()
             }
+
             override fun onWifiClick() = sideDrawer.toggle(SideControlDrawer.MODE_WIFI)
             override fun onCustomizeClick() = sideDrawer.toggle(SideControlDrawer.MODE_CUSTOMIZE)
             override fun onQuickSettingsClick() = sideDrawer.toggle(SideControlDrawer.MODE_QUICK)
@@ -211,7 +250,10 @@ class MainActivity : Activity() {
                 disableTransitionType(LayoutTransition.DISAPPEARING)
             }
         }
-        appGrid = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; clipChildren = false }
+        appGrid = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            clipChildren = false
+        }
         scrollContent.addView(appGrid)
         scroll.addView(scrollContent)
         mainBody.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))

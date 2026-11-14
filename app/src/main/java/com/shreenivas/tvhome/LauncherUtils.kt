@@ -25,12 +25,22 @@ object LauncherUtils {
         }
     }
 
+    fun calculateAdaptiveScale(context: Context): Float {
+        val dm = context.resources.displayMetrics
+        val maxSidePx = maxOf(dm.widthPixels, dm.heightPixels)
+        val widthDp = maxSidePx / dm.density
+
+        // Dynamic proportional scale based on actual screen width in dp & pixel density
+        val rawScale = (widthDp / 960f) * (1.5f / dm.density).coerceIn(0.85f, 1.25f)
+        return rawScale.coerceIn(0.95f, 1.50f)
+    }
+
     fun dp(context: Context, value: Int): Int {
-        return (value * context.resources.displayMetrics.density).roundToInt()
+        return (value * context.resources.displayMetrics.density * calculateAdaptiveScale(context)).roundToInt()
     }
 
     fun dpF(context: Context, value: Float): Float {
-        return value * context.resources.displayMetrics.density
+        return value * context.resources.displayMetrics.density * calculateAdaptiveScale(context)
     }
 
     fun createGlassDrawable(
