@@ -46,39 +46,30 @@ object CustomizeMenuBuilder {
         onClosedCallback?.invoke()
     }
 
-    fun closeSubMenuAndNavigate(moveDown: Boolean) {
+        fun closeSubMenuWithAnimation(onClosedCallback: (() -> Unit)? = null) {
+        if (openSubMenu.isEmpty()) {
+            onClosedCallback?.invoke()
+            return
+        }
         val closedKey = openSubMenu
-        val panel = activePanelRef ?: return
-        val parentCard = panel.findViewWithTag<View>("acc_$closedKey")
+        val panel = activePanelRef
+        val parentCard = panel?.findViewWithTag<View>("acc_$closedKey")
         val box = activeSubBoxRef
 
         openSubMenu = ""
         activeSubBoxRef = null
         lastFocusedTag = "acc_$closedKey"
 
-        val savedTransition = panel.layoutTransition
-        panel.layoutTransition = null
-
-        if (parentCard != null) {
-            parentCard.requestFocus()
-        }
+        val savedTransition = panel?.layoutTransition
+        panel?.layoutTransition = null
+        parentCard?.requestFocus()
         if (box != null && box.parent == panel) {
-            panel.removeView(box)
-        }
-
-        if (parentCard != null) {
-            if (!moveDown) {
-                parentCard.requestFocus()
-                lastFocusedTag = parentCard.tag as? String ?: ""
-            } else {
-                val next = FocusFinder.getInstance().findNextFocus(panel, parentCard, View.FOCUS_DOWN)
-                val target = next ?: parentCard
-                target.requestFocus()
-                lastFocusedTag = target.tag as? String ?: ""
-            }
+            panel?.removeView(box)
         }
         panel?.post { panel.layoutTransition = savedTransition }
+        onClosedCallback?.invoke()
     }
+
 
     fun build(
         ctx: Context,
