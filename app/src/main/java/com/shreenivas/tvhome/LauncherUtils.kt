@@ -29,10 +29,7 @@ object LauncherUtils {
         val dm = context.resources.displayMetrics
         val maxSidePx = maxOf(dm.widthPixels, dm.heightPixels)
         val widthDp = maxSidePx / dm.density
-
-        // Dynamic proportional scale based on actual screen width in dp & pixel density
-        val rawScale = (widthDp / 960f) * (1.5f / dm.density).coerceIn(0.85f, 1.25f)
-        return rawScale.coerceIn(0.95f, 1.50f)
+        return (widthDp / 960f).coerceIn(0.88f, 1.15f)
     }
 
     fun dp(context: Context, value: Int): Int {
