@@ -77,7 +77,7 @@ object CustomizeMenuBuilder {
                 lastFocusedTag = target.tag as? String ?: ""
             }
         }
-        panel.post { panel.layoutTransition = savedTransition }
+        panel?.post { panel.layoutTransition = savedTransition }
     }
 
     fun build(
