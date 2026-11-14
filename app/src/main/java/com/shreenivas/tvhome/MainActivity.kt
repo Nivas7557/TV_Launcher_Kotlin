@@ -3,6 +3,7 @@ package com.shreenivas.tvhome
 import android.Manifest
 import android.animation.LayoutTransition
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -66,23 +67,9 @@ class MainActivity : Activity() {
                 or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
         )
 
-        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 1002)
-        }
-
         buildScreen()
-
         NightNudgeReceiver.scheduleNextNudge(this)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
-            try {
-                val overlayIntent = Intent(
-                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    Uri.parse("package:$packageName")
-                )
-                startActivity(overlayIntent)
-            } catch (_: Exception) {
-            }
-        }
+        checkPermissionsWithExplanation()
 
         val filter = IntentFilter().apply {
             addAction(Intent.ACTION_PACKAGE_ADDED)
@@ -95,6 +82,35 @@ class MainActivity : Activity() {
         } else {
             registerReceiver(pkgReceiver, filter)
         }
+    }
+
+    private fun checkPermissionsWithExplanation() {
+        val needLoc = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+        val needOverlay = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)
+        if (!needLoc && !needOverlay) return
+
+        val msg = buildString {
+            append("To give you the best TV experience, Shree TV Home needs:\n\n")
+            if (needLoc) append("• Location Access: Required by Android TV to display your connected Wi-Fi network name.\n\n")
+            if (needOverlay) append("• Display Over Other Apps: Shows gentle bedtime reminder bubbles at night while watching videos.")
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Optional Permissions")
+            .setMessage(msg.trim())
+            .setPositiveButton("Allow") { _, _ ->
+                if (needLoc) {
+                    requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 1002)
+                }
+                if (needOverlay) {
+                    try {
+                        startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+                    } catch (_: Exception) {
+                    }
+                }
+            }
+            .setNegativeButton("Later", null)
+            .show()
     }
 
     override fun onDestroy() {
@@ -128,7 +144,6 @@ class MainActivity : Activity() {
         }
         return super.dispatchKeyEvent(event)
     }
-
     @Deprecated("Deprecated in Java")
     override fun onActivityResult(req: Int, res: Int, data: Intent?) {
         @Suppress("DEPRECATION")
@@ -152,6 +167,7 @@ class MainActivity : Activity() {
             sideDrawer.open(SideControlDrawer.MODE_WALLPAPER_EDIT)
         }
     }
+
     private fun openWallpaperPicker() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
@@ -310,17 +326,29 @@ class MainActivity : Activity() {
     private fun refreshApps(shouldRequestFocus: Boolean, restorePkg: String? = null) {
         AppGridManager.populate(
             this, lp, favSection, favRow, favCount, appGrid, allCount,
-            shouldRequestFocus, restorePkg, ::toggleFavorite
-        )
-    }
+            shouldRequestFocus, restorePkg,
+            object : AppTileFactory.TileActions {
+                override fun onToggleFavorite(pkg: String, label: String) {
+                    val list = lp.getOrderedFavorites()
+                    val added = !list.contains(pkg)
+                    if (added) list.add(pkg) else list.remove(pkg)
+                    lp.setFavorites(list)
+                    Toast.makeText(this@MainActivity, if (added) "$label added to Favorites" else "$label removed", Toast.LENGTH_SHORT).show()
+                    refreshApps(true, pkg)
+                }
 
-    private fun toggleFavorite(pkg: String, name: String) {
-        val updated = HashSet(lp.getFavorites())
-        val added = updated.add(pkg)
-        if (!added) updated.remove(pkg)
-        lp.setFavorites(updated)
-        Toast.makeText(this, if (added) "$name added to Favorites" else "$name removed", Toast.LENGTH_SHORT).show()
-        refreshApps(true, pkg)
+                override fun onMoveFavorite(pkg: String, delta: Int) {
+                    if (lp.moveFavorite(pkg, delta)) refreshApps(true, pkg)
+                }
+
+                override fun onHideApp(pkg: String, label: String) {
+                    val hidden = lp.getHiddenApps().apply { add(pkg) }
+                    lp.setHiddenApps(hidden)
+                    Toast.makeText(this@MainActivity, "$label hidden (Restore in Customize)", Toast.LENGTH_SHORT).show()
+                    refreshApps(true)
+                }
+            }
+        )
     }
 
     private fun dp(value: Int) = LauncherUtils.dp(this, value)
