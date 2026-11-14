@@ -38,13 +38,13 @@ class TopNavBar(
         fun onQuickSettingsClick()
     }
 
-    private val dateTv: TextView
-    private val timeTv: TextView
-    private val greetingCard: GreetingShineCard
-    private val ramTv: TextView
-    private val wifiPill: LinearLayout
-    private val wifiLabelTv: TextView
-    private val wifiBubbleTv: TextView
+    private lateinit var dateTv: TextView
+    private lateinit var timeTv: TextView
+    private lateinit var greetingCard: GreetingShineCard
+    private lateinit var ramTv: TextView
+    private lateinit var wifiPill: LinearLayout
+    private lateinit var wifiLabelTv: TextView
+    private lateinit var wifiBubbleTv: TextView
 
     private var receiverRegistered = false
     private val handler = Handler(Looper.getMainLooper())
@@ -61,8 +61,8 @@ class TopNavBar(
 
     private val cycleRunnable = object : Runnable {
         override fun run() {
+            if (!::wifiLabelTv.isInitialized) return
             if (wifiStateMode == 1) {
-                // Connecting: Alternate text smoothly between "WI-FI" and "Connecting..."
                 showConnectingAlt = !showConnectingAlt
                 wifiLabelTv.animate().alpha(0f).setDuration(180L).withEndAction {
                     wifiLabelTv.text = if (showConnectingAlt) "◌  Connecting..." else "📶  WI-FI"
@@ -70,7 +70,6 @@ class TopNavBar(
                 }.start()
                 handler.postDelayed(this, 1600L)
             } else if (wifiStateMode == 0) {
-                // No Internet: Smooth drop-in -> stay 4s -> Airflow Mist Dissolve -> repeat every 10s
                 triggerMistBubbleCycle()
                 handler.postDelayed(this, 10_000L)
             }
