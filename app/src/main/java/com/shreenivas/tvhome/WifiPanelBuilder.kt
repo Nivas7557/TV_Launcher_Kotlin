@@ -37,12 +37,17 @@ object WifiPanelBuilder {
                 LauncherUtils.applyFocusSpring(v, f, 1.02f, 4f)
                 v.background = glassCardBg(ctx, f, lp.accentColor)
             }
+            
             setOnClickListener {
                 @Suppress("DEPRECATION")
-                try {
-                    wm?.isWifiEnabled = !isWifiOn
-                    panel.postDelayed({ onRefresh() }, 500L)
+                val changed = try {
+                    wm?.setWifiEnabled(!isWifiOn) ?: false
                 } catch (_: Exception) {
+                    false
+                }
+                if (changed) {
+                    panel.postDelayed({ onRefresh() }, 500L)
+                } else {
                     openSystemWifi(ctx)
                 }
             }
