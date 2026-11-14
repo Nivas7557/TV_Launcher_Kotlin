@@ -65,17 +65,19 @@ class MainActivity : Activity() {
 
         buildScreen()
 
-        val filter = IntentFilter().apply {
-            addAction(Intent.ACTION_PACKAGE_ADDED)
-            addAction(Intent.ACTION_PACKAGE_REMOVED)
-            addAction(Intent.ACTION_PACKAGE_CHANGED)
-            addDataScheme("package")
+        NightNudgeReceiver.scheduleNextNudge(this)
+        if (!android.provider.Settings.canDrawOverlays(this)) {
+            try {
+                val overlayIntent = Intent(
+                    android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    android.net.Uri.parse("package:$packageName")
+                )
+                startActivity(overlayIntent)
+            } catch (_: Exception) {}
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(pkgReceiver, filter, RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(pkgReceiver, filter)
-        }
+                val filter = IntentFilter().apply {
+                    addAction(Intent.ACTION_PACKAGE_ADDED)
+
     }
 
     override fun onDestroy() {
