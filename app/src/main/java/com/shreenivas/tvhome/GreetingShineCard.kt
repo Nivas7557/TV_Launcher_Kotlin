@@ -35,20 +35,20 @@ class GreetingShineCard(
 
         greetingTv.apply {
             text = formatGreeting(userName, customPhrase)
-            textSize = 12.5f
+            textSize = 16f
             letterSpacing = 0.04f
             isSingleLine = true
             ellipsize = TextUtils.TruncateAt.END
-            maxWidth = dp(320)
+            maxWidth = dp(380)
             typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
         }
         addView(greetingTv)
 
         subTagTv.apply {
             text = "✦  SMART TV"
-            textSize = 8.5f
+            textSize = 10.5f
             letterSpacing = 0.12f
-            setTextColor(Color.argb(185, 210, 230, 255))
+            setTextColor(Color.argb(205, 220, 235, 255))
             typeface = Typeface.DEFAULT_BOLD
         }
         addView(subTagTv)
