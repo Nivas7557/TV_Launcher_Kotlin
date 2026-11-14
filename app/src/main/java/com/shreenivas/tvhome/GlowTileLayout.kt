@@ -51,14 +51,12 @@ class GlowTileLayout(context: Context) : FrameLayout(context) {
         tileFocused = gainFocus
 
         animate().cancel()
-        setLayerType(LAYER_TYPE_HARDWARE, null)
         animate()
             .scaleX(if (gainFocus) 1.08f else 1.0f)
             .scaleY(if (gainFocus) 1.08f else 1.0f)
             .translationZ(if (gainFocus) dp(12f) else 0f)
             .setDuration(if (gainFocus) 220L else 150L)
             .setInterpolator(LauncherUtils.FLUID_SPRING)
-            .withEndAction { setLayerType(LAYER_TYPE_NONE, null) }
             .start()
 
         if (gainFocus) startBreathing() else stopBreathing()
