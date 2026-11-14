@@ -40,36 +40,45 @@ object CustomizeMenuBuilder {
         panel?.layoutTransition = null
         parentCard?.requestFocus()
         if (box != null && box.parent == panel) {
-            panel.removeView(box)
-        }
-        panel?.post { panel.layoutTransition = savedTransition }
-        onClosedCallback?.invoke()
-    }
-
-        fun closeSubMenuWithAnimation(onClosedCallback: (() -> Unit)? = null) {
-        if (openSubMenu.isEmpty()) {
-            onClosedCallback?.invoke()
-            return
-        }
-        val closedKey = openSubMenu
-        val panel = activePanelRef
-        val parentCard = panel?.findViewWithTag<View>("acc_$closedKey")
-        val box = activeSubBoxRef
-
-        openSubMenu = ""
-        activeSubBoxRef = null
-        lastFocusedTag = "acc_$closedKey"
-
-        val savedTransition = panel?.layoutTransition
-        panel?.layoutTransition = null
-        parentCard?.requestFocus()
-        if (box != null && box.parent == panel) {
             panel?.removeView(box)
         }
         panel?.post { panel.layoutTransition = savedTransition }
         onClosedCallback?.invoke()
     }
 
+    fun closeSubMenuAndNavigate(moveDown: Boolean) {
+        val closedKey = openSubMenu
+        val panel = activePanelRef ?: return
+        val parentCard = panel.findViewWithTag<View>("acc_$closedKey")
+        val box = activeSubBoxRef
+
+        openSubMenu = ""
+        activeSubBoxRef = null
+        lastFocusedTag = "acc_$closedKey"
+
+        val savedTransition = panel.layoutTransition
+        panel.layoutTransition = null
+
+        if (parentCard != null) {
+            parentCard.requestFocus()
+        }
+        if (box != null && box.parent == panel) {
+            panel.removeView(box)
+        }
+
+        if (parentCard != null) {
+            if (!moveDown) {
+                parentCard.requestFocus()
+                lastFocusedTag = parentCard.tag as? String ?: ""
+            } else {
+                val next = FocusFinder.getInstance().findNextFocus(panel, parentCard, View.FOCUS_DOWN)
+                val target = next ?: parentCard
+                target.requestFocus()
+                lastFocusedTag = target.tag as? String ?: ""
+            }
+        }
+        panel.post { panel.layoutTransition = savedTransition }
+    }
 
     fun build(
         ctx: Context,
@@ -120,7 +129,6 @@ object CustomizeMenuBuilder {
             "cols", "⊞", "Apps Per Row", "${lp.columns} Columns",
             "accent", "✦", "Accent Aura", cap(lp.accentName), onLiveRefresh
         )
-
         addHeader(ctx, panel, "LAUNCHER THEMES (6 MODES)")
         val curTheme = lp.tileColor
         for (i in TileThemePalette.NAMES.indices step 2) {
@@ -180,6 +188,7 @@ object CustomizeMenuBuilder {
         if (lastFocusedTag.isNotEmpty()) panel.findViewWithTag<View>(lastFocusedTag)?.requestFocus()
         panel.postDelayed({ ignoreFocusTrigger = false }, 180L)
     }
+
     private fun addAccordionPair(
         ctx: Context, panel: LinearLayout, lp: LauncherPreferences, narrowMode: Boolean,
         k1: String, ic1: String, t1: String, v1: String,
@@ -226,8 +235,7 @@ object CustomizeMenuBuilder {
         val rowOrCard = if (clickedCard.parent == panel) clickedCard else clickedCard.parent as View
         insertSubMenuAt(ctx, panel, lp, key, clickedCard, panel.indexOfChild(rowOrCard) + 1, onLiveRefresh)
     }
-
-    private fun insertSubMenuAt(
+        private fun insertSubMenuAt(
         ctx: Context, panel: LinearLayout, lp: LauncherPreferences,
         key: String, parentCard: LinearLayout, index: Int, onLive: () -> Unit
     ) {
@@ -330,7 +338,8 @@ object CustomizeMenuBuilder {
             }
         }, 160L)
     }
-        private fun updateParentCardValue(card: LinearLayout, key: String, v: String, accent: Int) {
+
+    private fun updateParentCardValue(card: LinearLayout, key: String, v: String, accent: Int) {
         val mid = card.getChildAt(1) as? LinearLayout ?: return
         val sub = mid.getChildAt(1) as? TextView ?: return
         sub.text = when (key) {
@@ -423,37 +432,34 @@ object CustomizeMenuBuilder {
         c.addView(TextView(ctx).apply { text = actTxt; textSize = 9.5f; typeface = Typeface.DEFAULT_BOLD; setTextColor(accent) })
         panel.addView(c, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(ctx, 8) })
     }
-
-    private fun glossyPillBg(ctx: Context, sel: Boolean, foc: Boolean, accent: Int): GradientDrawable {
-        return GradientDrawable(
-            GradientDrawable.Orientation.TOP_BOTTOM,
-            when {
-                foc -> intArrayOf(Color.argb(120, 255, 255, 255), Color.argb(80, 255, 255, 255))
-                sel -> intArrayOf(Color.argb(90, 110, 165, 245), Color.argb(55, 75, 125, 210))
-                else -> intArrayOf(Color.argb(56, 255, 255, 255), Color.argb(28, 255, 255, 255))
-            }
-        ).apply {
-            cornerRadius = LauncherUtils.dpF(ctx, 13f)
-            setStroke(
-                dp(ctx, if (foc || sel) 2 else 1),
-                if (foc || sel) accent else Color.argb(70, 255, 255, 255)
-            )
-        }
-    }
-
-    private fun addHeader(ctx: Context, panel: LinearLayout, txt: String) {
-        panel.addView(TextView(ctx).apply {
-            text = txt
-            textSize = 9.5f
-            typeface = Typeface.DEFAULT_BOLD
-            letterSpacing = 0.07f
-            setTextColor(Color.argb(200, 200, 225, 245))
-        }, LinearLayout.LayoutParams(-1, -2).apply {
-            topMargin = dp(ctx, 10)
-            bottomMargin = dp(ctx, 6)
-        })
-    }
-
-    private fun cap(s: String): String = s.replaceFirstChar { it.uppercase() }
-    private fun dp(ctx: Context, v: Int): Int = LauncherUtils.dp(ctx, v)
+private fun glossyPillBg(ctx: Context, sel: Boolean, foc: Boolean, accent: Int): GradientDrawable {
+return GradientDrawable(
+GradientDrawable.Orientation.TOP_BOTTOM,
+when {
+foc -> intArrayOf(Color.argb(120, 255, 255, 255), Color.argb(80, 255, 255, 255))
+sel -> intArrayOf(Color.argb(90, 110, 165, 245), Color.argb(55, 75, 125, 210))
+else -> intArrayOf(Color.argb(56, 255, 255, 255), Color.argb(28, 255, 255, 255))
+}
+).apply {
+cornerRadius = LauncherUtils.dpF(ctx, 13f)
+setStroke(
+dp(ctx, if (foc || sel) 2 else 1),
+if (foc || sel) accent else Color.argb(70, 255, 255, 255)
+)
+}
+}
+private fun addHeader(ctx: Context, panel: LinearLayout, txt: String) {
+panel.addView(TextView(ctx).apply {
+text = txt
+textSize = 9.5f
+typeface = Typeface.DEFAULT_BOLD
+letterSpacing = 0.07f
+setTextColor(Color.argb(200, 200, 225, 245))
+}, LinearLayout.LayoutParams(-1, -2).apply {
+topMargin = dp(ctx, 10)
+bottomMargin = dp(ctx, 6)
+})
+}
+private fun cap(s: String): String = s.replaceFirstChar { it.uppercase() }
+private fun dp(ctx: Context, v: Int): Int = LauncherUtils.dp(ctx, v)
 }
