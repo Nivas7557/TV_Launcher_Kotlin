@@ -6,10 +6,8 @@ import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
-import android.util.TypedValue
 import android.view.View
 import android.view.animation.PathInterpolator
-import android.widget.TextView
 import kotlin.math.roundToInt
 
 object LauncherUtils {
@@ -27,28 +25,22 @@ object LauncherUtils {
         }
     }
 
-    // TV 10-Foot UI Scaling Factor (Automatically boosts sizes on large TV screens)
-    private fun tvScale(context: Context): Float {
+    fun calculateAdaptiveScale(context: Context): Float {
         val dm = context.resources.displayMetrics
-        val widthDp = dm.widthPixels / dm.density
-        return when {
-            widthDp >= 900 -> 1.42f  // Standard 1080p/4K Android TV
-            widthDp >= 720 -> 1.28f  // 720p TV / Large Tablet
-            else -> 1.15f            // Phone / Emulator
-        }
+        val maxSidePx = maxOf(dm.widthPixels, dm.heightPixels)
+        val widthDp = maxSidePx / dm.density
+
+        // Dynamic proportional scale based on actual screen width in dp & pixel density
+        val rawScale = (widthDp / 960f) * (1.5f / dm.density).coerceIn(0.85f, 1.25f)
+        return rawScale.coerceIn(0.95f, 1.50f)
     }
 
     fun dp(context: Context, value: Int): Int {
-        return (value * context.resources.displayMetrics.density * (tvScale(context) * 0.85f)).roundToInt()
+        return (value * context.resources.displayMetrics.density * calculateAdaptiveScale(context)).roundToInt()
     }
 
     fun dpF(context: Context, value: Float): Float {
-        return value * context.resources.displayMetrics.density * (tvScale(context) * 0.85f)
-    }
-
-    fun TextView.setTvTextSize(baseSp: Float) {
-        val scaled = baseSp * tvScale(context)
-        setTextSize(TypedValue.COMPLEX_UNIT_SP, scaled)
+        return value * context.resources.displayMetrics.density * calculateAdaptiveScale(context)
     }
 
     fun createGlassDrawable(
