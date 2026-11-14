@@ -20,8 +20,12 @@ object AppActionDialog {
         pkg: String,
         appName: String,
         isFav: Boolean,
+        canMoveLeft: Boolean,
+        canMoveRight: Boolean,
         accent: Int,
-        onToggleFav: () -> Unit
+        onToggleFav: () -> Unit,
+        onMoveFav: (Int) -> Unit,
+        onHideApp: () -> Unit
     ) {
         val box = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
@@ -48,9 +52,27 @@ object AppActionDialog {
         val dialog = AlertDialog.Builder(ctx).setView(box).create()
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
 
+        if (isFav && (canMoveLeft || canMoveRight)) {
+            val moveRow = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
+            if (canMoveLeft) {
+                val leftBtn = makeOptionBtn(ctx, "⬅  Move Left", accent) { dialog.dismiss(); onMoveFav(-1) }
+                moveRow.addView(leftBtn, LinearLayout.LayoutParams(0, LauncherUtils.dp(ctx, 42), 1f).apply {
+                    if (canMoveRight) rightMargin = LauncherUtils.dp(ctx, 8)
+                })
+            }
+            if (canMoveRight) {
+                val rightBtn = makeOptionBtn(ctx, "Move Right  ➡", accent) { dialog.dismiss(); onMoveFav(1) }
+                moveRow.addView(rightBtn, LinearLayout.LayoutParams(0, LauncherUtils.dp(ctx, 42), 1f))
+            }
+            box.addView(moveRow, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = LauncherUtils.dp(ctx, 9) })
+        }
+
         addOption(ctx, box, if (isFav) "★  Remove from Favorites" else "★  Add to Favorites", accent) {
-            dialog.dismiss()
-            onToggleFav()
+            dialog.dismiss(); onToggleFav()
+        }
+
+        addOption(ctx, box, "👁  Hide from Home", Color.rgb(175, 195, 235)) {
+            dialog.dismiss(); onHideApp()
         }
 
         addOption(ctx, box, "ℹ  App Info & Storage", accent) {
@@ -65,38 +87,26 @@ object AppActionDialog {
             if (intent.resolveActivity(ctx.packageManager) != null) ctx.startActivity(intent)
         }
 
-        box.scaleX = 0.90f
-        box.scaleY = 0.90f
-        box.alpha = 0f
+        box.scaleX = 0.90f; box.scaleY = 0.90f; box.alpha = 0f
         dialog.show()
-        box.animate()
-            .scaleX(1f).scaleY(1f).alpha(1f)
-            .setDuration(220L)
-            .setInterpolator(LauncherUtils.FLUID_SPRING)
-            .start()
+        box.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(220L).setInterpolator(LauncherUtils.FLUID_SPRING).start()
+    }
+
+    private fun makeOptionBtn(ctx: Context, label: String, accent: Int, action: () -> Unit) = Button(ctx).apply {
+        text = label; isAllCaps = false; textSize = 13f; typeface = Typeface.DEFAULT_BOLD
+        setTextColor(Color.WHITE); gravity = Gravity.CENTER
+        setPadding(LauncherUtils.dp(ctx, 10), 0, LauncherUtils.dp(ctx, 10), 0); isFocusable = true
+        background = pillBg(ctx, false, accent)
+        setOnFocusChangeListener { v, foc -> LauncherUtils.applyFocusSpring(v, foc, 1.03f, 4f); v.background = pillBg(ctx, foc, accent) }
+        setOnClickListener { action() }
     }
 
     private fun addOption(ctx: Context, box: LinearLayout, label: String, accent: Int, action: () -> Unit) {
-        val btn = Button(ctx).apply {
-            text = label
-            isAllCaps = false
-            textSize = 13.5f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.WHITE)
+        val btn = makeOptionBtn(ctx, label, accent, action).apply {
             gravity = Gravity.START or Gravity.CENTER_VERTICAL
             setPadding(LauncherUtils.dp(ctx, 16), 0, LauncherUtils.dp(ctx, 16), 0)
-            isFocusable = true
-            background = pillBg(ctx, false, accent)
-            setOnFocusChangeListener { v, foc ->
-                LauncherUtils.applyFocusSpring(v, foc, 1.03f, 4f)
-                v.background = pillBg(ctx, foc, accent)
-            }
-            setOnClickListener { action() }
         }
-        val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LauncherUtils.dp(ctx, 44)).apply {
-            bottomMargin = LauncherUtils.dp(ctx, 9)
-        }
-        box.addView(btn, lp)
+        box.addView(btn, LinearLayout.LayoutParams(-1, LauncherUtils.dp(ctx, 44)).apply { bottomMargin = LauncherUtils.dp(ctx, 9) })
     }
 
     private fun pillBg(ctx: Context, focused: Boolean, accent: Int) = GradientDrawable().apply {
