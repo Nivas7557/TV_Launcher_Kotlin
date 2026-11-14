@@ -134,10 +134,10 @@ object CustomizeMenuBuilder {
         addHeader(ctx, panel, "WALLPAPER & CANVAS")
         addWideCard(ctx, panel, "card_wallpaper", "🖼", "Custom Wallpaper Studio",
             "Scale, zoom & position", "Open ›", lp.accentColor, onOpenWallpaper)
-        buildScreen()
-        NightNudgeReceiver.scheduleNextNudge(this)
-        checkPermissionsWithExplanation()
         
+        buildScreen()
+        
+        NightNudgeReceiver.scheduleNextNudge(this)
         val backBtn = TextView(ctx).apply {
             tag = "btn_back_apps"
             text = "Back to Apps   ›"
