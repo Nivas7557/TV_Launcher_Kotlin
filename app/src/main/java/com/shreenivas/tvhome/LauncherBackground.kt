@@ -2,10 +2,10 @@ package com.shreenivas.tvhome
 
 import android.animation.ValueAnimator
 import android.content.Context
+import android.graphics.BlurMaskFilter
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
-import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PorterDuff
@@ -17,6 +17,7 @@ import android.view.View
 import android.view.animation.LinearInterpolator
 import android.widget.FrameLayout
 import android.widget.ImageView
+import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
@@ -68,42 +69,50 @@ object LauncherBackground {
     }
 
     fun onScrollParallax(scrollY: Int) {
-        val shift = minOf(45f, scrollY * 0.14f)
+        val shift = minOf(36f, scrollY * 0.12f)
         activeWallpaperView?.translationY = baseOffsetY - shift
         activeAuroraView?.setParallaxShift(shift)
     }
-        private class AuroraSkyView(
+
+    private class AuroraSkyView(
         ctx: Context,
         private var themeKey: String,
         private var accentColor: Int
     ) : View(ctx) {
 
         private val skyPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-        private val auroraPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+        private val ribbonPaint1 = Paint(Paint.ANTI_ALIAS_FLAG)
+        private val ribbonPaint2 = Paint(Paint.ANTI_ALIAS_FLAG)
         private val starPaint = Paint(Paint.ANTI_ALIAS_FLAG)
         private val moonHaloPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-        private val moonPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(255, 250, 228) }
+        private val moonPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(255, 250, 232) }
         private val moonCutPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
         }
 
         private val wavePath = Path()
-        private val matrix = Matrix()
-        private var auroraShader: LinearGradient? = null
         private var flowAnim: ValueAnimator? = null
         private var phase = 0f
         private var parallaxY = 0f
 
-        private data class Star(val xRatio: Float, val yRatio: Float, val radiusDp: Float, val offset: Float)
+        private data class Star(val xRatio: Float, val yRatio: Float, val radiusDp: Float, val offset: Float, val warm: Boolean)
 
-        private val stars = List(55) { i ->
-            val rnd = Random(i * 997 + 13)
+        private val stars = List(75) { i ->
+            val rnd = Random(i * 1013 + 7)
             Star(
                 xRatio = rnd.nextFloat(),
-                yRatio = rnd.nextFloat() * 0.68f,
-                radiusDp = 0.8f + rnd.nextFloat() * 1.6f,
-                offset = rnd.nextFloat() * 6.28f
+                yRatio = rnd.nextFloat() * 0.72f,
+                radiusDp = 0.5f + rnd.nextFloat() * 1.2f,
+                offset = rnd.nextFloat() * 6.28f,
+                warm = i % 5 == 0
             )
+        }
+
+        init {
+            setLayerType(LAYER_TYPE_SOFTWARE, null)
+            val blur = BlurMaskFilter(48f * resources.displayMetrics.density, BlurMaskFilter.Blur.NORMAL)
+            ribbonPaint1.maskFilter = blur
+            ribbonPaint2.maskFilter = blur
         }
 
         fun updateStyle(newTheme: String, newAccent: Int) {
@@ -125,7 +134,7 @@ object LauncherBackground {
 
             flowAnim?.cancel()
             flowAnim = ValueAnimator.ofFloat(0f, 6.28318f).apply {
-                duration = 16000L
+                duration = 22000L
                 repeatCount = ValueAnimator.INFINITE
                 interpolator = LinearInterpolator()
                 addUpdateListener {
@@ -141,24 +150,35 @@ object LauncherBackground {
             val baseColors = TileThemePalette.getWallpaperGradient(themeKey)
             skyPaint.shader = LinearGradient(
                 0f, 0f, 0f, h.toFloat(),
-                intArrayOf(Color.rgb(7, 11, 30), baseColors[0], baseColors[2]),
-                floatArrayOf(0f, 0.55f, 1f),
+                intArrayOf(Color.rgb(5, 8, 22), baseColors[0], baseColors[2]),
+                floatArrayOf(0f, 0.52f, 1f),
                 Shader.TileMode.CLAMP
             )
 
-            auroraShader = LinearGradient(
-                0f, 0f, w.toFloat(), h * 0.6f,
+            ribbonPaint1.shader = LinearGradient(
+                0f, h * 0.15f, w.toFloat(), h * 0.55f,
                 intArrayOf(
-                    Color.argb(0, 46, 232, 165),
-                    Color.argb(95, 42, 235, 168),
-                    Color.argb(105, 85, 175, 255),
-                    Color.argb(90, 175, 95, 255),
-                    Color.argb(0, 175, 95, 255)
+                    Color.argb(0, 32, 210, 155),
+                    Color.argb(72, 38, 225, 165),
+                    Color.argb(82, 72, 165, 245),
+                    Color.argb(65, 145, 85, 235),
+                    Color.argb(0, 145, 85, 235)
                 ),
                 floatArrayOf(0f, 0.25f, 0.52f, 0.78f, 1f),
                 Shader.TileMode.CLAMP
             )
-            auroraPaint.shader = auroraShader
+
+            ribbonPaint2.shader = LinearGradient(
+                w.toFloat(), h * 0.2f, 0f, h * 0.6f,
+                intArrayOf(
+                    Color.argb(0, 65, 235, 180),
+                    Color.argb(55, 52, 215, 160),
+                    Color.argb(60, 110, 140, 255),
+                    Color.argb(0, 110, 140, 255)
+                ),
+                floatArrayOf(0f, 0.35f, 0.70f, 1f),
+                Shader.TileMode.CLAMP
+            )
         }
 
         override fun onDraw(canvas: Canvas) {
@@ -166,56 +186,55 @@ object LauncherBackground {
             val h = height.toFloat()
             if (w <= 0f || h <= 0f) return
 
-            // 1. Deep Cosmic Sky
             canvas.drawRect(0f, 0f, w, h, skyPaint)
 
-            // 2. Twinkling Stars
             val d = resources.displayMetrics.density
             for (s in stars) {
-                val twinkle = 0.45f + 0.55f * sin(phase * 2f + s.offset)
-                starPaint.color = Color.argb((twinkle * 235).toInt(), 235, 245, 255)
-                canvas.drawCircle(s.xRatio * w, s.yRatio * h - parallaxY * 0.4f, s.radiusDp * d, starPaint)
+                val twinkle = 0.35f + 0.65f * sin(phase * 2.5f + s.offset)
+                val alpha = (twinkle * 215).toInt().coerceIn(20, 235)
+                starPaint.color = if (s.warm) Color.argb(alpha, 255, 238, 205) else Color.argb(alpha, 215, 235, 255)
+                canvas.drawCircle(s.xRatio * w, s.yRatio * h - parallaxY * 0.35f, s.radiusDp * d, starPaint)
             }
 
-            // 3. Glowing Crescent Moon (Top-Right Sky)
-            val moonX = w * 0.84f
-            val moonY = h * 0.19f - parallaxY * 0.6f
-            val moonR = 24f * d
+            val moonX = w * 0.85f
+            val moonY = h * 0.17f - parallaxY * 0.5f
+            val moonR = 20f * d
             moonHaloPaint.shader = RadialGradient(
-                moonX, moonY, moonR * 3.4f,
-                Color.argb(85, 255, 248, 210), Color.TRANSPARENT, Shader.TileMode.CLAMP
+                moonX, moonY, moonR * 4.2f,
+                Color.argb(65, 255, 248, 215), Color.TRANSPARENT, Shader.TileMode.CLAMP
             )
-            canvas.drawCircle(moonX, moonY, moonR * 3.4f, moonHaloPaint)
+            canvas.drawCircle(moonX, moonY, moonR * 4.2f, moonHaloPaint)
 
             val layerId = canvas.saveLayer(moonX - moonR * 2, moonY - moonR * 2, moonX + moonR * 2, moonY + moonR * 2, null)
             canvas.drawCircle(moonX, moonY, moonR, moonPaint)
-            canvas.drawCircle(moonX + moonR * 0.42f, moonY - moonR * 0.22f, moonR * 0.86f, moonCutPaint)
+            canvas.drawCircle(moonX + moonR * 0.44f, moonY - moonR * 0.22f, moonR * 0.86f, moonCutPaint)
             canvas.restoreToCount(layerId)
 
-            // 4. Flowing Aurora Borealis Ribbons
-            auroraShader?.let {
-                val drift = sin(phase) * (w * 0.08f)
-                matrix.setTranslate(drift, 0f)
-                it.setLocalMatrix(matrix)
-            }
-            drawAuroraWave(canvas, w, h, baseY = h * 0.34f, amp = h * 0.07f, offset = 0f)
-            drawAuroraWave(canvas, w, h, baseY = h * 0.44f, amp = h * 0.05f, offset = 1.8f)
+            drawOrganicRibbon(canvas, w, h, baseY = h * 0.28f, thickness = h * 0.18f, amp = h * 0.055f, offset = 0f, paint = ribbonPaint1)
+            drawOrganicRibbon(canvas, w, h, baseY = h * 0.36f, thickness = h * 0.14f, amp = h * 0.045f, offset = 2.1f, paint = ribbonPaint2)
         }
 
-        private fun drawAuroraWave(canvas: Canvas, w: Float, h: Float, baseY: Float, amp: Float, offset: Float) {
+        private fun drawOrganicRibbon(
+            canvas: Canvas, w: Float, h: Float,
+            baseY: Float, thickness: Float, amp: Float, offset: Float, paint: Paint
+        ) {
             wavePath.reset()
-            wavePath.moveTo(0f, baseY)
-            val steps = 12
+            val steps = 16
             val stepW = w / steps
             for (i in 0..steps) {
                 val x = i * stepW
-                val y = baseY + sin(phase + offset + i * 0.55f) * amp - parallaxY
+                val wave = sin(phase + offset + i * 0.45f) * amp + cos(phase * 0.7f + i * 0.3f) * (amp * 0.4f)
+                val y = baseY + wave - parallaxY
+                if (i == 0) wavePath.moveTo(x, y) else wavePath.lineTo(x, y)
+            }
+            for (i in steps downTo 0) {
+                val x = i * stepW
+                val wave = sin(phase + offset + i * 0.45f) * amp
+                val y = baseY + thickness + wave * 0.6f - parallaxY
                 wavePath.lineTo(x, y)
             }
-            wavePath.lineTo(w, baseY + h * 0.28f)
-            wavePath.lineTo(0f, baseY + h * 0.28f)
             wavePath.close()
-            canvas.drawPath(wavePath, auroraPaint)
+            canvas.drawPath(wavePath, paint)
         }
 
         override fun onDetachedFromWindow() {
