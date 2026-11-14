@@ -143,3 +143,199 @@ class TopNavBar(
 
         updateClockRamAndWifi()
     }
+    private fun updateClockRamAndWifi() {
+        val now = Date()
+        dateTv.text = SimpleDateFormat("EEE d MMM", Locale.getDefault()).format(now)
+        timeTv.text = SimpleDateFormat("h:mm a", Locale.getDefault()).format(now)
+        refreshGreeting()
+        updateRamInfo()
+        updateWifiVisualState()
+    }
+
+    private fun updateRamInfo() {
+        val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager ?: return
+        val memInfo = ActivityManager.MemoryInfo()
+        am.getMemoryInfo(memInfo)
+        val totalGb = memInfo.totalMem / (1024f * 1024f * 1024f)
+        val usedGb = (memInfo.totalMem - memInfo.availMem) / (1024f * 1024f * 1024f)
+        ramTv.text = String.format(Locale.US, "⚡ %.1f/%.1f GB", usedGb, totalGb)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun updateWifiVisualState() {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        val wm = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+        val net = cm?.activeNetwork
+        val caps = cm?.getNetworkCapabilities(net)
+        val isConnected = caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true ||
+            caps?.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) == true
+        val isWifiEnabling = wm?.wifiState == WifiManager.WIFI_STATE_ENABLING
+
+        val newMode = when {
+            isConnected -> 2
+            isWifiEnabling -> 1
+            else -> 0
+        }
+
+        if (newMode == wifiStateMode && newMode != 2) return
+        wifiStateMode = newMode
+        handler.removeCallbacks(cycleRunnable)
+        swingAnim?.cancel()
+        breatheAnim?.cancel()
+        wifiPill.scaleX = 1f; wifiPill.scaleY = 1f; wifiPill.alpha = 1f
+
+        when (newMode) {
+            2 -> {
+                // Connected: Green border + Swinging SSID Tag below
+                val green = Color.rgb(46, 232, 138)
+                wifiLabelTv.text = "📶  WI-FI"
+                wifiPill.background = GradientDrawable().apply {
+                    setColor(Color.argb(65, 24, 95, 62))
+                    setStroke(dp(2), green)
+                    cornerRadius = LauncherUtils.dpF(context, 22f)
+                }
+                val rawSsid = wm?.connectionInfo?.ssid?.replace("\"", "") ?: ""
+                val ssidLabel = if (rawSsid.isNotEmpty() && rawSsid != "<unknown ssid>") rawSsid else "Connected"
+                wifiBubbleTv.text = "● $ssidLabel"
+                wifiBubbleTv.alpha = 1f; wifiBubbleTv.translationY = 0f; wifiBubbleTv.scaleX = 1f; wifiBubbleTv.scaleY = 1f
+                wifiBubbleTv.background = GradientDrawable().apply {
+                    setColor(Color.argb(185, 18, 72, 48))
+                    setStroke(dp(1), green)
+                    cornerRadius = LauncherUtils.dpF(context, 12f)
+                }
+                wifiBubbleTv.visibility = View.VISIBLE
+                startPendulumSwing()
+            }
+            1 -> {
+                // Connecting: Breathing In & Out + Alternating Text
+                wifiBubbleTv.visibility = View.GONE
+                wifiPill.background = pillBg(true, Color.rgb(92, 184, 255))
+                breatheAnim = ValueAnimator.ofFloat(0.96f, 1.04f).apply {
+                    duration = 950L; repeatMode = ValueAnimator.REVERSE; repeatCount = ValueAnimator.INFINITE
+                    interpolator = AccelerateDecelerateInterpolator()
+                    addUpdateListener {
+                        val s = it.animatedValue as Float
+                        wifiPill.scaleX = s; wifiPill.scaleY = s
+                    }
+                    start()
+                }
+                handler.post(cycleRunnable)
+            }
+            else -> {
+                // Disconnected: Normal pill + 10s Airflow Mist Bubble Drop/Dissolve
+                wifiLabelTv.text = "📶  WI-FI"
+                wifiPill.background = pillBg(false, lp.accentColor)
+                wifiBubbleTv.rotation = 0f
+                handler.post(cycleRunnable)
+            }
+        }
+    }
+
+    private fun startPendulumSwing() {
+        wifiBubbleTv.post {
+            wifiBubbleTv.pivotX = wifiBubbleTv.width / 2f
+            wifiBubbleTv.pivotY = 0f
+            swingAnim = ValueAnimator.ofFloat(-3.5f, 3.5f).apply {
+                duration = 2200L; repeatMode = ValueAnimator.REVERSE; repeatCount = ValueAnimator.INFINITE
+                interpolator = AccelerateDecelerateInterpolator()
+                addUpdateListener { wifiBubbleTv.rotation = it.animatedValue as Float }
+                start()
+            }
+        }
+    }
+
+    private fun triggerMistBubbleCycle() {
+        wifiBubbleTv.animate().cancel()
+        wifiBubbleTv.text = "○ No Internet"
+        wifiBubbleTv.background = GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(Color.argb(165, 95, 145, 210), Color.argb(120, 55, 90, 150))
+        ).apply {
+            setStroke(dp(1), Color.argb(160, 185, 225, 255))
+            cornerRadius = LauncherUtils.dpF(context, 12f)
+        }
+
+        // 1. Smooth Drop-In
+        wifiBubbleTv.visibility = View.VISIBLE
+        wifiBubbleTv.alpha = 0f
+        wifiBubbleTv.translationY = -dp(10).toFloat()
+        wifiBubbleTv.scaleX = 0.88f; wifiBubbleTv.scaleY = 0.88f
+        wifiBubbleTv.animate()
+            .alpha(1f).translationY(0f).scaleX(1f).scaleY(1f)
+            .setDuration(420L)
+            .setInterpolator(LauncherUtils.FLUID_SPRING)
+            .start()
+
+        // 2. Water / Airflow Mist Dissolve after 4 seconds (Expands gently like mist into air)
+        handler.postDelayed({
+            if (wifiStateMode == 0 && wifiBubbleTv.visibility == View.VISIBLE) {
+                wifiBubbleTv.animate()
+                    .alpha(0f)
+                    .translationY(-dp(12).toFloat())
+                    .scaleX(1.16f)
+                    .scaleY(0.80f)
+                    .setDuration(650L)
+                    .setInterpolator(LauncherUtils.SILKY_EASE)
+                    .withEndAction { wifiBubbleTv.visibility = View.GONE }
+                    .start()
+            }
+        }, 4200L)
+    }
+
+    fun refreshGreeting() {
+        greetingCard.updateGreeting(lp.userName, lp.greetingPhrase)
+        greetingCard.setAccentColor(lp.accentColor)
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        if (!receiverRegistered) {
+            val filter = IntentFilter().apply {
+                addAction(Intent.ACTION_TIME_TICK)
+                addAction(Intent.ACTION_TIME_CHANGED)
+                addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION)
+                addAction(WifiManager.WIFI_STATE_CHANGED_ACTION)
+            }
+            context.registerReceiver(statusReceiver, filter)
+            receiverRegistered = true
+            updateClockRamAndWifi()
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        handler.removeCallbacksAndMessages(null)
+        swingAnim?.cancel(); breatheAnim?.cancel()
+        if (receiverRegistered) {
+            try { context.unregisterReceiver(statusReceiver) } catch (_: Exception) {}
+            receiverRegistered = false
+        }
+    }
+
+    private fun makeGlassPill(label: String) = LinearLayout(context).apply {
+        gravity = Gravity.CENTER; setPadding(dp(18), 0, dp(18), 0); isFocusable = true; isClickable = true
+        addView(makeText(label, 14f, Color.WHITE, true)); background = pillBg(false, lp.accentColor)
+        setOnFocusChangeListener { v, f -> LauncherUtils.applyFocusSpring(v, f, 1.07f, 8f); v.background = pillBg(f, lp.accentColor) }
+    }
+
+    private fun makeCircleButton(symbol: String) = TextView(context).apply {
+        text = symbol; textSize = 18f; setTextColor(Color.WHITE); gravity = Gravity.CENTER; isFocusable = true
+        background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.argb(52, 16, 26, 48)); setStroke(dp(1), Color.argb(90, 255, 255, 255)) }
+        setOnFocusChangeListener { v, f ->
+            LauncherUtils.applyFocusSpring(v, f, 1.12f, 8f)
+            if (symbol == "⚙") v.animate().rotation(if (f) 45f else 0f).setDuration(200).start()
+        }
+    }
+
+    private fun pillBg(focused: Boolean, accent: Int) = GradientDrawable().apply {
+        setColor(if (focused) Color.argb(105, 255, 255, 255) else Color.argb(48, 16, 26, 48))
+        setStroke(dp(if (focused) 2 else 1), if (focused) accent else Color.argb(85, 255, 255, 255))
+        cornerRadius = LauncherUtils.dpF(context, 22f)
+    }
+
+    private fun makeText(value: String, size: Float, color: Int, bold: Boolean) = TextView(context).apply {
+        text = value; textSize = size; setTextColor(color); if (bold) typeface = Typeface.DEFAULT_BOLD
+    }
+
+    private fun dp(value: Int) = LauncherUtils.dp(context, value)
+}
