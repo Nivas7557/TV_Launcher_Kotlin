@@ -27,7 +27,7 @@ class GreetingShineCard(
 
     private val mainPill = LinearLayout(ctx)
     private val greetingTv = ShimmerTextView(ctx)
-    private val nudgeBubble = TextView(ctx)
+    private var externalBubbleTv: TextView? = null
     private var nudgeAnimator: ValueAnimator? = null
 
     init {
@@ -39,31 +39,24 @@ class GreetingShineCard(
         mainPill.apply {
             orientation = HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(20), dp(7), dp(22), dp(7))
+            setPadding(dp(16), dp(6), dp(18), dp(6))
         }
 
         greetingTv.apply {
-            textSize = 16.5f
-            letterSpacing = 0.04f
+            textSize = 15.5f
+            letterSpacing = 0.03f
             isSingleLine = true
             ellipsize = TextUtils.TruncateAt.END
-            maxWidth = dp(380)
+            maxWidth = dp(280)
             typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
         }
         mainPill.addView(greetingTv)
         addView(mainPill)
+        refreshState()
+    }
 
-        nudgeBubble.apply {
-            textSize = 12.5f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.argb(245, 255, 240, 220))
-            setPadding(dp(14), dp(6), dp(16), dp(6))
-            isFocusable = false
-            isClickable = false
-            visibility = View.GONE
-        }
-        addView(nudgeBubble, LayoutParams(-2, -2).apply { leftMargin = dp(10) })
-
+    fun attachOverlayBubble(bubble: TextView) {
+        externalBubbleTv = bubble
         refreshState()
     }
 
@@ -131,74 +124,76 @@ class GreetingShineCard(
             Color.argb(145, 170, 185, 255)
         )
     }
+
     private fun updateNudgeBubble(mins: Int) {
+        val bubble = externalBubbleTv ?: return
         val pool: List<String>? = when {
             mins >= 1350 -> listOf(
                 "🌙  Even the TV needs some rest now...",
-                "🔋  Human battery at 10% • Time to recharge!",
-                "✨  Tomorrow's plans start with tonight's sleep",
+                "🔋  Human battery at 10% • Recharge!",
+                "✨  Tomorrow starts with tonight's sleep",
                 "🛋️  One last episode... or actual sleep?",
                 "💤  Winding down • Cozy blanket awaits"
             )
             mins in 0..239 -> listOf(
-                "🦉  Midnight Owl detected! Dreams on, TV off",
-                "🚫  No TV zone! Your eyes deserve a break now",
-                "🌌  The stars are asleep, why are you awake?",
-                "⚡  Heads up: Morning alarm won't show mercy!",
-                "🛌  Past midnight • Time to call it a night"
+                "🦉  Midnight Owl! Dreams on, TV off",
+                "🚫  No TV zone! Eyes deserve a break",
+                "🌌  Stars are asleep, why are you awake?",
+                "⚡  Morning alarm won't show mercy!",
+                "🛌  Past midnight • Call it a night"
             )
             mins in 240..359 -> listOf(
-                "🌅  Early bird mode! Peaceful morning ahead",
-                "☕  Up before the sun! Fresh start today",
-                "✨  Quiet morning, clear mind • Great going!"
+                "🌅  Early bird mode! Peaceful morning",
+                "☕  Up before the sun! Fresh start",
+                "✨  Quiet morning, clear mind!"
             )
             else -> null
         }
 
         if (pool == null) {
-            nudgeBubble.visibility = View.GONE
+            bubble.visibility = View.GONE
             nudgeAnimator?.cancel()
             nudgeAnimator = null
             return
         }
 
         val index = ((mins / 15) % pool.size).coerceAtLeast(0)
-        nudgeBubble.text = pool[index]
-        nudgeBubble.visibility = View.VISIBLE
+        bubble.text = pool[index]
+        bubble.visibility = View.VISIBLE
 
         val isMidnight = mins in 0..239
         val isEarly = mins in 240..359
         val topTint = when {
-            isMidnight -> Color.argb(105, 255, 95, 130)
-            isEarly -> Color.argb(95, 255, 190, 95)
-            else -> Color.argb(95, 135, 110, 235)
+            isMidnight -> Color.argb(215, 185, 55, 95)
+            isEarly -> Color.argb(210, 195, 130, 55)
+            else -> Color.argb(215, 48, 65, 145)
         }
         val strokeTint = when {
-            isMidnight -> Color.argb(175, 255, 160, 180)
-            isEarly -> Color.argb(175, 255, 220, 145)
-            else -> Color.argb(170, 185, 170, 255)
+            isMidnight -> Color.argb(210, 255, 160, 180)
+            isEarly -> Color.argb(210, 255, 220, 145)
+            else -> Color.argb(200, 175, 195, 255)
         }
 
-        nudgeBubble.background = GradientDrawable(
+        bubble.background = GradientDrawable(
             GradientDrawable.Orientation.TL_BR,
-            intArrayOf(topTint, Color.argb(48, 25, 35, 65))
+            intArrayOf(topTint, Color.argb(225, 18, 26, 54))
         ).apply {
             cornerRadii = floatArrayOf(
-                dpF(18f), dpF(18f),
-                dpF(18f), dpF(18f),
-                dpF(18f), dpF(18f),
-                dpF(4f), dpF(4f)
+                dpF(4f), dpF(4f),
+                dpF(16f), dpF(16f),
+                dpF(16f), dpF(16f),
+                dpF(16f), dpF(16f)
             )
             setStroke(dp(1), strokeTint)
         }
 
         if (nudgeAnimator == null) {
-            nudgeAnimator = ValueAnimator.ofFloat(0.86f, 1.0f).apply {
+            nudgeAnimator = ValueAnimator.ofFloat(0.88f, 1.0f).apply {
                 duration = 2200L
                 repeatMode = ValueAnimator.REVERSE
                 repeatCount = ValueAnimator.INFINITE
                 interpolator = AccelerateDecelerateInterpolator()
-                addUpdateListener { nudgeBubble.alpha = it.animatedValue as Float }
+                addUpdateListener { bubble.alpha = it.animatedValue as Float }
                 start()
             }
         }
