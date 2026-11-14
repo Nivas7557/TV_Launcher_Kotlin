@@ -12,6 +12,7 @@ import android.graphics.drawable.GradientDrawable
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.wifi.WifiManager
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
@@ -50,7 +51,7 @@ class TopNavBar(
     private val handler = Handler(Looper.getMainLooper())
     private var swingAnim: ValueAnimator? = null
     private var breatheAnim: ValueAnimator? = null
-    private var wifiStateMode = -1 // 0 = Disconnected, 1 = Connecting, 2 = Connected
+    private var wifiStateMode = -1
     private var showConnectingAlt = false
 
     private val statusReceiver = object : BroadcastReceiver() {
@@ -84,29 +85,41 @@ class TopNavBar(
         setPadding(0, dp(2), 0, dp(14))
 
         val clockBox = LinearLayout(context).apply { orientation = VERTICAL }
-        dateTv = makeText("", 19f, Color.WHITE, true).apply { setShadowLayer(4f, 0f, 2f, Color.argb(140, 0, 0, 0)) }
+        dateTv = makeText("", 19f, Color.WHITE, true).apply {
+            setShadowLayer(4f, 0f, 2f, Color.argb(140, 0, 0, 0))
+        }
         timeTv = makeText("", 14.5f, Color.argb(230, 225, 242, 255), true)
-        clockBox.addView(dateTv); clockBox.addView(timeTv)
+        clockBox.addView(dateTv)
+        clockBox.addView(timeTv)
         addView(clockBox)
 
-        addView(View(context).apply { setBackgroundColor(Color.argb(65, 255, 255, 255)) },
-            LayoutParams(dp(1), dp(28)).apply { leftMargin = dp(16); rightMargin = dp(16) })
+        addView(
+            View(context).apply { setBackgroundColor(Color.argb(65, 255, 255, 255)) },
+            LayoutParams(dp(1), dp(28)).apply { leftMargin = dp(16); rightMargin = dp(16) }
+        )
 
         greetingCard = GreetingShineCard(context, lp.userName, lp.greetingPhrase, lp.accentColor)
         addView(greetingCard, LayoutParams(-2, dp(42)))
 
         addView(View(context), LayoutParams(0, 1, 1f))
 
-        // Voice Search Pill
-        val voicePill = makeGlassPill("🎙  Voice Search").apply { setOnClickListener { callbacks.onVoiceSearch() } }
+        val voicePill = makeGlassPill("🎙  Voice Search").apply {
+            setOnClickListener { callbacks.onVoiceSearch() }
+        }
         addView(voicePill, LayoutParams(-2, dp(40)))
 
-        // Live RAM Status Pill (Before Wi-Fi)
         ramTv = makeText("⚡ RAM", 13f, Color.WHITE, true)
         val ramPill = LinearLayout(context).apply {
-            gravity = Gravity.CENTER; setPadding(dp(14), 0, dp(14), 0); isFocusable = true; isClickable = true
-            addView(ramTv); background = pillBg(false, lp.accentColor)
-            setOnFocusChangeListener { v, f -> LauncherUtils.applyFocusSpring(v, f, 1.06f, 6f); v.background = pillBg(f, lp.accentColor) }
+            gravity = Gravity.CENTER
+            setPadding(dp(14), 0, dp(14), 0)
+            isFocusable = true
+            isClickable = true
+            addView(ramTv)
+            background = pillBg(false, lp.accentColor)
+            setOnFocusChangeListener { v, f ->
+                LauncherUtils.applyFocusSpring(v, f, 1.06f, 6f)
+                v.background = pillBg(f, lp.accentColor)
+            }
             setOnClickListener {
                 System.gc()
                 updateRamInfo()
@@ -115,34 +128,56 @@ class TopNavBar(
         }
         addView(ramPill, LayoutParams(-2, dp(40)).apply { leftMargin = dp(10) })
 
-        // Wi-Fi Container with Hanging Swinging / Mist-Dissolving Bubble
-        val wifiWrapper = FrameLayout(context).apply { clipChildren = false; clipToPadding = false }
+        val wifiWrapper = FrameLayout(context).apply {
+            clipChildren = false
+            clipToPadding = false
+        }
         wifiLabelTv = makeText("📶  WI-FI", 14f, Color.WHITE, true)
         wifiPill = LinearLayout(context).apply {
-            gravity = Gravity.CENTER; setPadding(dp(16), 0, dp(16), 0); isFocusable = true; isClickable = true
-            addView(wifiLabelTv); background = pillBg(false, lp.accentColor)
-            setOnFocusChangeListener { v, f -> LauncherUtils.applyFocusSpring(v, f, 1.07f, 8f) }
+            gravity = Gravity.CENTER
+            setPadding(dp(16), 0, dp(16), 0)
+            isFocusable = true
+            isClickable = true
+            addView(wifiLabelTv)
+            background = pillBg(false, lp.accentColor)
+            setOnFocusChangeListener { v, f ->
+                LauncherUtils.applyFocusSpring(v, f, 1.07f, 8f)
+            }
             setOnClickListener { callbacks.onWifiClick() }
         }
-        wifiWrapper.addView(wifiPill, FrameLayout.LayoutParams(-2, dp(40), Gravity.TOP or Gravity.CENTER_HORIZONTAL))
+        wifiWrapper.addView(
+            wifiPill,
+            FrameLayout.LayoutParams(-2, dp(40), Gravity.TOP or Gravity.CENTER_HORIZONTAL)
+        )
 
         wifiBubbleTv = TextView(context).apply {
-            textSize = 10.5f; typeface = Typeface.DEFAULT_BOLD; setTextColor(Color.WHITE)
-            setPadding(dp(10), dp(3), dp(10), dp(3)); isSingleLine = true; visibility = View.GONE
+            textSize = 10.5f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.WHITE)
+            setPadding(dp(10), dp(3), dp(10), dp(3))
+            isSingleLine = true
+            visibility = View.GONE
         }
-        wifiWrapper.addView(wifiBubbleTv, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply {
-            topMargin = dp(43)
-        })
+        wifiWrapper.addView(
+            wifiBubbleTv,
+            FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply {
+                topMargin = dp(43)
+            }
+        )
         addView(wifiWrapper, LayoutParams(-2, dp(40)).apply { leftMargin = dp(10) })
 
-        addView(makeCircleButton("✦").apply { setOnClickListener { callbacks.onCustomizeClick() } },
-            LayoutParams(dp(40), dp(40)).apply { leftMargin = dp(10) })
-        addView(makeCircleButton("⚙").apply { setOnClickListener { callbacks.onQuickSettingsClick() } },
-            LayoutParams(dp(40), dp(40)).apply { leftMargin = dp(10) })
+        addView(
+            makeCircleButton("✦").apply { setOnClickListener { callbacks.onCustomizeClick() } },
+            LayoutParams(dp(40), dp(40)).apply { leftMargin = dp(10) }
+        )
+        addView(
+            makeCircleButton("⚙").apply { setOnClickListener { callbacks.onQuickSettingsClick() } },
+            LayoutParams(dp(40), dp(40)).apply { leftMargin = dp(10) }
+        )
 
         updateClockRamAndWifi()
     }
-    private fun updateClockRamAndWifi() {
+        private fun updateClockRamAndWifi() {
         val now = Date()
         dateTv.text = SimpleDateFormat("EEE d MMM", Locale.getDefault()).format(now)
         timeTv.text = SimpleDateFormat("h:mm a", Locale.getDefault()).format(now)
@@ -152,23 +187,34 @@ class TopNavBar(
     }
 
     private fun updateRamInfo() {
-        val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager ?: return
-        val memInfo = ActivityManager.MemoryInfo()
-        am.getMemoryInfo(memInfo)
-        val totalGb = memInfo.totalMem / (1024f * 1024f * 1024f)
-        val usedGb = (memInfo.totalMem - memInfo.availMem) / (1024f * 1024f * 1024f)
-        ramTv.text = String.format(Locale.US, "⚡ %.1f/%.1f GB", usedGb, totalGb)
+        try {
+            val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager ?: return
+            val memInfo = ActivityManager.MemoryInfo()
+            am.getMemoryInfo(memInfo)
+            val totalGb = memInfo.totalMem / (1024f * 1024f * 1024f)
+            val usedGb = (memInfo.totalMem - memInfo.availMem) / (1024f * 1024f * 1024f)
+            ramTv.text = String.format(Locale.US, "⚡ %.1f/%.1f GB", usedGb, totalGb)
+        } catch (_: Exception) {
+            ramTv.text = "⚡ RAM"
+        }
     }
 
     @Suppress("DEPRECATION")
     private fun updateWifiVisualState() {
-        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
-        val wm = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
-        val net = cm?.activeNetwork
-        val caps = cm?.getNetworkCapabilities(net)
-        val isConnected = caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true ||
-            caps?.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) == true
-        val isWifiEnabling = wm?.wifiState == WifiManager.WIFI_STATE_ENABLING
+        var isConnected = false
+        var isWifiEnabling = false
+        var wm: WifiManager? = null
+
+        try {
+            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            wm = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+            val net = cm?.activeNetwork
+            val caps = cm?.getNetworkCapabilities(net)
+            isConnected = caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true ||
+                caps?.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) == true
+            isWifiEnabling = wm?.wifiState == WifiManager.WIFI_STATE_ENABLING
+        } catch (_: Exception) {
+        }
 
         val newMode = when {
             isConnected -> 2
@@ -181,11 +227,12 @@ class TopNavBar(
         handler.removeCallbacks(cycleRunnable)
         swingAnim?.cancel()
         breatheAnim?.cancel()
-        wifiPill.scaleX = 1f; wifiPill.scaleY = 1f; wifiPill.alpha = 1f
+        wifiPill.scaleX = 1f
+        wifiPill.scaleY = 1f
+        wifiPill.alpha = 1f
 
         when (newMode) {
             2 -> {
-                // Connected: Green border + Swinging SSID Tag below
                 val green = Color.rgb(46, 232, 138)
                 wifiLabelTv.text = "📶  WI-FI"
                 wifiPill.background = GradientDrawable().apply {
@@ -193,10 +240,17 @@ class TopNavBar(
                     setStroke(dp(2), green)
                     cornerRadius = LauncherUtils.dpF(context, 22f)
                 }
-                val rawSsid = wm?.connectionInfo?.ssid?.replace("\"", "") ?: ""
+                val rawSsid = try {
+                    wm?.connectionInfo?.ssid?.replace("\"", "") ?: ""
+                } catch (_: Exception) {
+                    ""
+                }
                 val ssidLabel = if (rawSsid.isNotEmpty() && rawSsid != "<unknown ssid>") rawSsid else "Connected"
                 wifiBubbleTv.text = "● $ssidLabel"
-                wifiBubbleTv.alpha = 1f; wifiBubbleTv.translationY = 0f; wifiBubbleTv.scaleX = 1f; wifiBubbleTv.scaleY = 1f
+                wifiBubbleTv.alpha = 1f
+                wifiBubbleTv.translationY = 0f
+                wifiBubbleTv.scaleX = 1f
+                wifiBubbleTv.scaleY = 1f
                 wifiBubbleTv.background = GradientDrawable().apply {
                     setColor(Color.argb(185, 18, 72, 48))
                     setStroke(dp(1), green)
@@ -206,22 +260,23 @@ class TopNavBar(
                 startPendulumSwing()
             }
             1 -> {
-                // Connecting: Breathing In & Out + Alternating Text
                 wifiBubbleTv.visibility = View.GONE
                 wifiPill.background = pillBg(true, Color.rgb(92, 184, 255))
                 breatheAnim = ValueAnimator.ofFloat(0.96f, 1.04f).apply {
-                    duration = 950L; repeatMode = ValueAnimator.REVERSE; repeatCount = ValueAnimator.INFINITE
+                    duration = 950L
+                    repeatMode = ValueAnimator.REVERSE
+                    repeatCount = ValueAnimator.INFINITE
                     interpolator = AccelerateDecelerateInterpolator()
                     addUpdateListener {
                         val s = it.animatedValue as Float
-                        wifiPill.scaleX = s; wifiPill.scaleY = s
+                        wifiPill.scaleX = s
+                        wifiPill.scaleY = s
                     }
                     start()
                 }
                 handler.post(cycleRunnable)
             }
             else -> {
-                // Disconnected: Normal pill + 10s Airflow Mist Bubble Drop/Dissolve
                 wifiLabelTv.text = "📶  WI-FI"
                 wifiPill.background = pillBg(false, lp.accentColor)
                 wifiBubbleTv.rotation = 0f
@@ -235,7 +290,9 @@ class TopNavBar(
             wifiBubbleTv.pivotX = wifiBubbleTv.width / 2f
             wifiBubbleTv.pivotY = 0f
             swingAnim = ValueAnimator.ofFloat(-3.5f, 3.5f).apply {
-                duration = 2200L; repeatMode = ValueAnimator.REVERSE; repeatCount = ValueAnimator.INFINITE
+                duration = 2200L
+                repeatMode = ValueAnimator.REVERSE
+                repeatCount = ValueAnimator.INFINITE
                 interpolator = AccelerateDecelerateInterpolator()
                 addUpdateListener { wifiBubbleTv.rotation = it.animatedValue as Float }
                 start()
@@ -254,18 +311,17 @@ class TopNavBar(
             cornerRadius = LauncherUtils.dpF(context, 12f)
         }
 
-        // 1. Smooth Drop-In
         wifiBubbleTv.visibility = View.VISIBLE
         wifiBubbleTv.alpha = 0f
         wifiBubbleTv.translationY = -dp(10).toFloat()
-        wifiBubbleTv.scaleX = 0.88f; wifiBubbleTv.scaleY = 0.88f
+        wifiBubbleTv.scaleX = 0.88f
+        wifiBubbleTv.scaleY = 0.88f
         wifiBubbleTv.animate()
             .alpha(1f).translationY(0f).scaleX(1f).scaleY(1f)
             .setDuration(420L)
             .setInterpolator(LauncherUtils.FLUID_SPRING)
             .start()
 
-        // 2. Water / Airflow Mist Dissolve after 4 seconds (Expands gently like mist into air)
         handler.postDelayed({
             if (wifiStateMode == 0 && wifiBubbleTv.visibility == View.VISIBLE) {
                 wifiBubbleTv.animate()
@@ -295,8 +351,15 @@ class TopNavBar(
                 addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION)
                 addAction(WifiManager.WIFI_STATE_CHANGED_ACTION)
             }
-            context.registerReceiver(statusReceiver, filter)
-            receiverRegistered = true
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    context.registerReceiver(statusReceiver, filter, Context.RECEIVER_EXPORTED)
+                } else {
+                    context.registerReceiver(statusReceiver, filter)
+                }
+                receiverRegistered = true
+            } catch (_: Exception) {
+            }
             updateClockRamAndWifi()
         }
     }
@@ -304,22 +367,41 @@ class TopNavBar(
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         handler.removeCallbacksAndMessages(null)
-        swingAnim?.cancel(); breatheAnim?.cancel()
+        swingAnim?.cancel()
+        breatheAnim?.cancel()
         if (receiverRegistered) {
-            try { context.unregisterReceiver(statusReceiver) } catch (_: Exception) {}
+            try {
+                context.unregisterReceiver(statusReceiver)
+            } catch (_: Exception) {
+            }
             receiverRegistered = false
         }
     }
 
     private fun makeGlassPill(label: String) = LinearLayout(context).apply {
-        gravity = Gravity.CENTER; setPadding(dp(18), 0, dp(18), 0); isFocusable = true; isClickable = true
-        addView(makeText(label, 14f, Color.WHITE, true)); background = pillBg(false, lp.accentColor)
-        setOnFocusChangeListener { v, f -> LauncherUtils.applyFocusSpring(v, f, 1.07f, 8f); v.background = pillBg(f, lp.accentColor) }
+        gravity = Gravity.CENTER
+        setPadding(dp(18), 0, dp(18), 0)
+        isFocusable = true
+        isClickable = true
+        addView(makeText(label, 14f, Color.WHITE, true))
+        background = pillBg(false, lp.accentColor)
+        setOnFocusChangeListener { v, f ->
+            LauncherUtils.applyFocusSpring(v, f, 1.07f, 8f)
+            v.background = pillBg(f, lp.accentColor)
+        }
     }
 
     private fun makeCircleButton(symbol: String) = TextView(context).apply {
-        text = symbol; textSize = 18f; setTextColor(Color.WHITE); gravity = Gravity.CENTER; isFocusable = true
-        background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.argb(52, 16, 26, 48)); setStroke(dp(1), Color.argb(90, 255, 255, 255)) }
+        text = symbol
+        textSize = 18f
+        setTextColor(Color.WHITE)
+        gravity = Gravity.CENTER
+        isFocusable = true
+        background = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(Color.argb(52, 16, 26, 48))
+            setStroke(dp(1), Color.argb(90, 255, 255, 255))
+        }
         setOnFocusChangeListener { v, f ->
             LauncherUtils.applyFocusSpring(v, f, 1.12f, 8f)
             if (symbol == "⚙") v.animate().rotation(if (f) 45f else 0f).setDuration(200).start()
@@ -333,7 +415,10 @@ class TopNavBar(
     }
 
     private fun makeText(value: String, size: Float, color: Int, bold: Boolean) = TextView(context).apply {
-        text = value; textSize = size; setTextColor(color); if (bold) typeface = Typeface.DEFAULT_BOLD
+        text = value
+        textSize = size
+        setTextColor(color)
+        if (bold) typeface = Typeface.DEFAULT_BOLD
     }
 
     private fun dp(value: Int) = LauncherUtils.dp(context, value)
