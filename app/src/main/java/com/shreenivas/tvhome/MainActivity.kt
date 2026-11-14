@@ -71,8 +71,8 @@ class MainActivity : Activity() {
         }
 
         buildScreen()
-
         NightNudgeReceiver.scheduleNextNudge(this)
+            checkPermissionsWithExplanation()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
             try {
                 val overlayIntent = Intent(
@@ -151,6 +151,61 @@ class MainActivity : Activity() {
             applyWallpaperOnly()
             sideDrawer.open(SideControlDrawer.MODE_WALLPAPER_EDIT)
         }
+    }
+        private fun checkPermissionsWithExplanation() {
+        val needLoc = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+        val needOverlay = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)
+        if (!needLoc && !needOverlay) return
+
+        val msg = buildString {
+            append("To give you the best TV experience, Shree TV Home needs:\n\n")
+            if (needLoc) append("• Location Access: Required by Android TV to display your connected Wi-Fi network name.\n\n")
+            if (needOverlay) append("• Display Over Other Apps: Shows gentle bedtime reminder bubbles at night while watching videos.")
+        }
+
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Optional Permissions")
+            .setMessage(msg.trim())
+            .setPositiveButton("Allow") { _, _ ->
+                if (needLoc) {
+                    requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 1002)
+                }
+                if (needOverlay) {
+                    try {
+                        startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+                    } catch (_: Exception) {}
+                }
+            }
+            .setNegativeButton("Later", null)
+            .show()
+    }
+
+    private fun refreshApps(shouldRequestFocus: Boolean, restorePkg: String? = null) {
+        AppGridManager.populate(
+            this, lp, favSection, favRow, favCount, appGrid, allCount,
+            shouldRequestFocus, restorePkg,
+            object : AppTileFactory.TileActions {
+                override fun onToggleFavorite(pkg: String, label: String) {
+                    val list = lp.getOrderedFavorites()
+                    val added = !list.contains(pkg)
+                    if (added) list.add(pkg) else list.remove(pkg)
+                    lp.setFavorites(list)
+                    Toast.makeText(this@MainActivity, if (added) "$label added to Favorites" else "$label removed", Toast.LENGTH_SHORT).show()
+                    refreshApps(true, pkg)
+                }
+
+                override fun onMoveFavorite(pkg: String, delta: Int) {
+                    if (lp.moveFavorite(pkg, delta)) refreshApps(true, pkg)
+                }
+
+                override fun onHideApp(pkg: String, label: String) {
+                    val hidden = lp.getHiddenApps().apply { add(pkg) }
+                    lp.setHiddenApps(hidden)
+                    Toast.makeText(this@MainActivity, "$label hidden (Restore in Customize)", Toast.LENGTH_SHORT).show()
+                    refreshApps(true)
+                }
+            }
+        )
     }
     private fun openWallpaperPicker() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
