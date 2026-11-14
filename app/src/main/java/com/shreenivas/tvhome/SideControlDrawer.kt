@@ -56,14 +56,15 @@ class SideControlDrawer(
         drawerLayout.background = GradientDrawable(
             GradientDrawable.Orientation.TL_BR,
             intArrayOf(
-                Color.argb(175, 24, 34, 68),
-                Color.argb(190, 16, 22, 48),
-                Color.argb(205, 12, 18, 38)
+                Color.argb(238, 18, 26, 52),
+                Color.argb(244, 12, 18, 38),
+                Color.argb(248, 8, 12, 28)
             )
         ).apply {
             cornerRadius = LauncherUtils.dpF(context, 24f)
-            setStroke(dp(1.5f), Color.argb(120, 255, 255, 255))
+            setStroke(dp(1.5f), Color.argb(135, 255, 255, 255))
         }
+
         drawerLayout.elevation = dp(20f).toFloat()
 
         scrim.setBackgroundColor(Color.argb(45, 4, 8, 20))
