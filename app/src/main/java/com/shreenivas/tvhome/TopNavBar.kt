@@ -9,12 +9,11 @@ import android.content.IntentFilter
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
@@ -25,6 +24,7 @@ import android.widget.Toast
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.roundToInt
 
 class TopNavBar(
     context: Context,
@@ -52,6 +52,7 @@ class TopNavBar(
     private var swingAnim: ValueAnimator? = null
     private var breatheAnim: ValueAnimator? = null
     private var wifiStateMode = -1
+    private var lastShownSsid = ""
     private var showConnectingAlt = false
 
     private val statusReceiver = object : BroadcastReceiver() {
@@ -82,13 +83,13 @@ class TopNavBar(
         gravity = Gravity.CENTER_VERTICAL
         clipChildren = false
         clipToPadding = false
-        setPadding(0, dp(2), 0, dp(14))
+        setPadding(0, dp(4), 0, dp(18))
 
         val clockBox = LinearLayout(context).apply { orientation = VERTICAL }
-        dateTv = makeText("", 19f, Color.WHITE, true).apply {
+        dateTv = makeText("", 18.5f, Color.WHITE, true).apply {
             setShadowLayer(4f, 0f, 2f, Color.argb(140, 0, 0, 0))
         }
-        timeTv = makeText("", 14.5f, Color.argb(230, 225, 242, 255), true)
+        timeTv = makeText("", 14f, Color.argb(230, 225, 242, 255), true)
         clockBox.addView(dateTv)
         clockBox.addView(timeTv)
         addView(clockBox)
@@ -108,10 +109,10 @@ class TopNavBar(
         }
         addView(voicePill, LayoutParams(-2, dp(40)))
 
-        ramTv = makeText("⚡ RAM", 13f, Color.WHITE, true)
+        ramTv = makeText("⚡ RAM --%", 13f, Color.WHITE, true)
         val ramPill = LinearLayout(context).apply {
             gravity = Gravity.CENTER
-            setPadding(dp(14), 0, dp(14), 0)
+            setPadding(dp(15), 0, dp(15), 0)
             isFocusable = true
             isClickable = true
             addView(ramTv)
@@ -132,7 +133,7 @@ class TopNavBar(
             clipChildren = false
             clipToPadding = false
         }
-        wifiLabelTv = makeText("📶  WI-FI", 14f, Color.WHITE, true)
+        wifiLabelTv = makeText("📶  WI-FI", 13.5f, Color.WHITE, true)
         wifiPill = LinearLayout(context).apply {
             gravity = Gravity.CENTER
             setPadding(dp(16), 0, dp(16), 0)
@@ -151,10 +152,12 @@ class TopNavBar(
         )
 
         wifiBubbleTv = TextView(context).apply {
-            textSize = 10.5f
+            textSize = 10f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE)
             setPadding(dp(10), dp(3), dp(10), dp(3))
+            maxWidth = dp(140)
+            ellipsize = TextUtils.TruncateAt.END
             isSingleLine = true
             visibility = View.GONE
         }
@@ -177,7 +180,7 @@ class TopNavBar(
 
         updateClockRamAndWifi()
     }
-        private fun updateClockRamAndWifi() {
+    private fun updateClockRamAndWifi() {
         val now = Date()
         dateTv.text = SimpleDateFormat("EEE d MMM", Locale.getDefault()).format(now)
         timeTv.text = SimpleDateFormat("h:mm a", Locale.getDefault()).format(now)
@@ -191,9 +194,10 @@ class TopNavBar(
             val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager ?: return
             val memInfo = ActivityManager.MemoryInfo()
             am.getMemoryInfo(memInfo)
-            val totalGb = memInfo.totalMem / (1024f * 1024f * 1024f)
-            val usedGb = (memInfo.totalMem - memInfo.availMem) / (1024f * 1024f * 1024f)
-            ramTv.text = String.format(Locale.US, "⚡ %.1f/%.1f GB", usedGb, totalGb)
+            val total = memInfo.totalMem.coerceAtLeast(1L)
+            val used = (total - memInfo.availMem).coerceAtLeast(0L)
+            val pct = ((used.toDouble() / total.toDouble()) * 100.0).roundToInt().coerceIn(1, 99)
+            ramTv.text = "⚡ RAM $pct%"
         } catch (_: Exception) {
             ramTv.text = "⚡ RAM"
         }
@@ -201,29 +205,20 @@ class TopNavBar(
 
     @Suppress("DEPRECATION")
     private fun updateWifiVisualState() {
-        var isConnected = false
-        var isWifiEnabling = false
-        var wm: WifiManager? = null
-
-        try {
-            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
-            wm = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
-            val net = cm?.activeNetwork
-            val caps = cm?.getNetworkCapabilities(net)
-            isConnected = caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true ||
-                caps?.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) == true
-            isWifiEnabling = wm?.wifiState == WifiManager.WIFI_STATE_ENABLING
-        } catch (_: Exception) {
-        }
+        val wm = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+        val connectedSsid = WifiPanelBuilder.getConnectedSsid(context, wm)
+        val isWifiEnabling = try { wm?.wifiState == WifiManager.WIFI_STATE_ENABLING } catch (_: Exception) { false }
 
         val newMode = when {
-            isConnected -> 2
+            connectedSsid != null -> 2
             isWifiEnabling -> 1
             else -> 0
         }
 
-        if (newMode == wifiStateMode && newMode != 2) return
+        if (newMode == wifiStateMode && (newMode != 2 || connectedSsid == lastShownSsid)) return
         wifiStateMode = newMode
+        lastShownSsid = connectedSsid ?: ""
+
         handler.removeCallbacks(cycleRunnable)
         swingAnim?.cancel()
         breatheAnim?.cancel()
@@ -236,23 +231,17 @@ class TopNavBar(
                 val green = Color.rgb(46, 232, 138)
                 wifiLabelTv.text = "📶  WI-FI"
                 wifiPill.background = GradientDrawable().apply {
-                    setColor(Color.argb(65, 24, 95, 62))
+                    setColor(Color.argb(72, 24, 98, 64))
                     setStroke(dp(2), green)
                     cornerRadius = LauncherUtils.dpF(context, 22f)
                 }
-                val rawSsid = try {
-                    wm?.connectionInfo?.ssid?.replace("\"", "") ?: ""
-                } catch (_: Exception) {
-                    ""
-                }
-                val ssidLabel = if (rawSsid.isNotEmpty() && rawSsid != "<unknown ssid>") rawSsid else "Connected"
-                wifiBubbleTv.text = "● $ssidLabel"
+                wifiBubbleTv.text = "● $connectedSsid"
                 wifiBubbleTv.alpha = 1f
                 wifiBubbleTv.translationY = 0f
                 wifiBubbleTv.scaleX = 1f
                 wifiBubbleTv.scaleY = 1f
                 wifiBubbleTv.background = GradientDrawable().apply {
-                    setColor(Color.argb(185, 18, 72, 48))
+                    setColor(Color.argb(195, 18, 72, 48))
                     setStroke(dp(1), green)
                     cornerRadius = LauncherUtils.dpF(context, 12f)
                 }
@@ -289,8 +278,8 @@ class TopNavBar(
         wifiBubbleTv.post {
             wifiBubbleTv.pivotX = wifiBubbleTv.width / 2f
             wifiBubbleTv.pivotY = 0f
-            swingAnim = ValueAnimator.ofFloat(-3.5f, 3.5f).apply {
-                duration = 2200L
+            swingAnim = ValueAnimator.ofFloat(-4f, 4f).apply {
+                duration = 2100L
                 repeatMode = ValueAnimator.REVERSE
                 repeatCount = ValueAnimator.INFINITE
                 interpolator = AccelerateDecelerateInterpolator()
@@ -383,7 +372,7 @@ class TopNavBar(
         setPadding(dp(18), 0, dp(18), 0)
         isFocusable = true
         isClickable = true
-        addView(makeText(label, 14f, Color.WHITE, true))
+        addView(makeText(label, 13.5f, Color.WHITE, true))
         background = pillBg(false, lp.accentColor)
         setOnFocusChangeListener { v, f ->
             LauncherUtils.applyFocusSpring(v, f, 1.07f, 8f)
