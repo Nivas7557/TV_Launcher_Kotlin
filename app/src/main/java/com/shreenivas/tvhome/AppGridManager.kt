@@ -111,7 +111,6 @@ object AppGridManager {
             }
             cachedApps = list
         }
-
         val comparator = Comparator<ResolveInfo> { a, b ->
             val la = labelCache[a.activityInfo.packageName]?.lowercase(Locale.ROOT) ?: ""
             val lb = labelCache[b.activityInfo.packageName]?.lowercase(Locale.ROOT) ?: ""
@@ -121,13 +120,22 @@ object AppGridManager {
         val favSet = lp.getFavorites()
         val favApps = allApps.filter { favSet.contains(it.activityInfo.packageName) }
 
-        val cols = lp.columns
+        val sizeFactor = when (lp.tileSize) {
+            "small" -> 0.85f
+            "large" -> 1.15f
+            else -> 1.0f
+        }
+        val effectiveCols = when (lp.tileSize) {
+            "small" -> (lp.columns + 1).coerceAtMost(8)
+            "large" -> (lp.columns - 1).coerceAtLeast(4)
+            else -> lp.columns
+        }
+
         val edgePad = dp(ctx, 10)
         val availW = ctx.resources.displayMetrics.widthPixels - dp(ctx, 72) - (edgePad * 2)
         val gap = dp(ctx, 16)
-        val tileW = (availW - (gap * (cols - 1))) / cols
-        val ratio = when (lp.tileSize) { "small" -> 0.62f; "large" -> 0.85f; else -> 0.72f }
-        val tileH = (tileW * ratio).toInt()
+        val tileW = (availW - (gap * (effectiveCols - 1))) / effectiveCols
+        val tileH = (tileW * 0.74f * sizeFactor).toInt()
         var firstFocusTarget: View? = null
 
         favSection.visibility = View.VISIBLE
@@ -142,7 +150,7 @@ object AppGridManager {
                 val pkg = app.activityInfo.packageName
                 val tile = AppTileFactory.create(
                     ctx, pm, app, labelCache[pkg], iconCache[pkg],
-                    true, lp.accentColor, lp.badgeMode, lp.tileShape, lp.tileColor, tileH, onToggleFavorite
+                    true, lp.accentColor, lp.badgeMode, lp.tileShape, lp.tileColor, lp.tileSize, tileH, onToggleFavorite
                 )
                 val tp = LinearLayout.LayoutParams(tileW, tileH).apply { if (i < favApps.lastIndex) rightMargin = gap }
                 favRow.addView(tile, tp)
@@ -150,8 +158,8 @@ object AppGridManager {
             }
         }
 
-        allCount.text = "${allApps.size} ${if (allApps.size == 1) "Apps" else "Apps"}"
-        for (start in allApps.indices step cols) {
+        allCount.text = "${allApps.size} ${if (allApps.size == 1) "App" else "Apps"}"
+        for (start in allApps.indices step effectiveCols) {
             val row = LinearLayout(ctx).apply {
                 orientation = LinearLayout.HORIZONTAL
                 clipChildren = false
@@ -160,13 +168,13 @@ object AppGridManager {
             }
             appGrid.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(ctx, 8) })
 
-            val end = minOf(start + cols, allApps.size)
+            val end = minOf(start + effectiveCols, allApps.size)
             for (i in start until end) {
                 val app = allApps[i]
                 val pkg = app.activityInfo.packageName
                 val tile = AppTileFactory.create(
                     ctx, pm, app, labelCache[pkg], iconCache[pkg],
-                    favSet.contains(pkg), lp.accentColor, lp.badgeMode, lp.tileShape, lp.tileColor, tileH, onToggleFavorite
+                    favSet.contains(pkg), lp.accentColor, lp.badgeMode, lp.tileShape, lp.tileColor, lp.tileSize, tileH, onToggleFavorite
                 )
                 val tp = LinearLayout.LayoutParams(tileW, tileH).apply { if (i < end - 1) rightMargin = gap }
                 row.addView(tile, tp)
