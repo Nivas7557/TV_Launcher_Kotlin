@@ -113,3 +113,88 @@ object AppGridManager {
             }
             cachedApps = list
         }
+        val hiddenSet = lp.getHiddenApps()
+        val visibleApps = (cachedApps ?: emptyList()).filter { !hiddenSet.contains(it.activityInfo.packageName) }
+
+        val comparator = Comparator<ResolveInfo> { a, b ->
+            val la = labelCache[a.activityInfo.packageName]?.lowercase(Locale.ROOT) ?: ""
+            val lb = labelCache[b.activityInfo.packageName]?.lowercase(Locale.ROOT) ?: ""
+            if (lp.isSortAscending) la.compareTo(lb) else lb.compareTo(la)
+        }
+        val allApps = visibleApps.sortedWith(comparator)
+
+        // Build Favorites in exact user-defined custom order
+        val orderedFavPkgs = lp.getOrderedFavorites()
+        val appByPkg = visibleApps.associateBy { it.activityInfo.packageName }
+        val favApps = orderedFavPkgs.mapNotNull { appByPkg[it] }
+
+        val sizeFactor = when (lp.tileSize) { "small" -> 0.85f; "large" -> 1.15f; else -> 1.0f }
+        val effectiveCols = when (lp.tileSize) {
+            "small" -> (lp.columns + 1).coerceAtMost(8)
+            "large" -> (lp.columns - 1).coerceAtLeast(4)
+            else -> lp.columns
+        }
+
+        val edgePad = dp(ctx, 10)
+        val availW = ctx.resources.displayMetrics.widthPixels - dp(ctx, 72) - (edgePad * 2)
+        val gap = dp(ctx, 16)
+        val tileW = (availW - (gap * (effectiveCols - 1))) / effectiveCols
+        val tileH = (tileW * 0.74f * sizeFactor).toInt()
+        var firstFocusTarget: View? = null
+
+        favSection.visibility = View.VISIBLE
+        if (favApps.isEmpty()) {
+            favRow.visibility = View.GONE
+            favCount.text = "Long-press any app to add"
+        } else {
+            favRow.visibility = View.VISIBLE
+            favRow.setPadding(edgePad, edgePad / 2, edgePad, edgePad / 2)
+            favCount.text = "${favApps.size} ${if (favApps.size == 1) "App" else "Apps"}"
+            favApps.forEachIndexed { i, app ->
+                val pkg = app.activityInfo.packageName
+                val tile = AppTileFactory.create(
+                    ctx, pm, app, labelCache[pkg], iconCache[pkg],
+                    true, i, favApps.size, lp.accentColor, lp.badgeMode, lp.tileShape, lp.tileColor, lp.tileSize, tileH, actions
+                )
+                val tp = LinearLayout.LayoutParams(tileW, tileH).apply { if (i < favApps.lastIndex) rightMargin = gap }
+                favRow.addView(tile, tp)
+                if (i == 0) firstFocusTarget = tile
+            }
+        }
+
+        allCount.text = "${allApps.size} ${if (allApps.size == 1) "Apps" else "Apps"}"
+        for (start in allApps.indices step effectiveCols) {
+            val row = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL; clipChildren = false; clipToPadding = false
+                setPadding(edgePad, edgePad / 2, edgePad, edgePad / 2)
+            }
+            appGrid.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(ctx, 8) })
+
+            val end = minOf(start + effectiveCols, allApps.size)
+            for (i in start until end) {
+                val app = allApps[i]
+                val pkg = app.activityInfo.packageName
+                val favIdx = favApps.indexOfFirst { it.activityInfo.packageName == pkg }
+                val tile = AppTileFactory.create(
+                    ctx, pm, app, labelCache[pkg], iconCache[pkg],
+                    favIdx >= 0, favIdx, favApps.size, lp.accentColor, lp.badgeMode, lp.tileShape, lp.tileColor, lp.tileSize, tileH, actions
+                )
+                val tp = LinearLayout.LayoutParams(tileW, tileH).apply { if (i < end - 1) rightMargin = gap }
+                row.addView(tile, tp)
+                if (restorePkg == pkg || (firstFocusTarget == null && start == 0 && i == 0)) {
+                    firstFocusTarget = tile
+                }
+            }
+        }
+
+        if (shouldRequestFocus) firstFocusTarget?.post { firstFocusTarget?.requestFocus() }
+    }
+
+    private fun chipBg(ctx: Context, focused: Boolean, accent: Int) = GradientDrawable().apply {
+        setColor(if (focused) Color.argb(90, 255, 255, 255) else Color.argb(36, 255, 255, 255))
+        cornerRadius = LauncherUtils.dpF(ctx, 14f)
+        setStroke(dp(ctx, if (focused) 2 else 1), if (focused) accent else Color.argb(55, 255, 255, 255))
+    }
+
+    private fun dp(ctx: Context, v: Int) = LauncherUtils.dp(ctx, v)
+}
