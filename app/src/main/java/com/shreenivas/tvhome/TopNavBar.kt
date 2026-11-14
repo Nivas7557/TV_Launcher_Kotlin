@@ -42,6 +42,7 @@ class TopNavBar(
     private lateinit var dateTv: TextView
     private lateinit var timeTv: TextView
     private lateinit var greetingCard: GreetingShineCard
+    private lateinit var nudgeOverlayBubble: TextView
     private lateinit var ramTv: TextView
     private lateinit var wifiPill: LinearLayout
     private lateinit var wifiLabelTv: TextView
@@ -83,36 +84,63 @@ class TopNavBar(
         gravity = Gravity.CENTER_VERTICAL
         clipChildren = false
         clipToPadding = false
-        setPadding(0, dp(4), 0, dp(18))
+        setPadding(0, dp(4), 0, dp(22))
 
         val clockBox = LinearLayout(context).apply { orientation = VERTICAL }
-        dateTv = makeText("", 18.5f, Color.WHITE, true).apply {
+        dateTv = makeText("", 18f, Color.WHITE, true).apply {
             setShadowLayer(4f, 0f, 2f, Color.argb(140, 0, 0, 0))
         }
-        timeTv = makeText("", 14f, Color.argb(230, 225, 242, 255), true)
+        timeTv = makeText("", 13.5f, Color.argb(230, 225, 242, 255), true)
         clockBox.addView(dateTv)
         clockBox.addView(timeTv)
         addView(clockBox)
 
         addView(
             View(context).apply { setBackgroundColor(Color.argb(65, 255, 255, 255)) },
-            LayoutParams(dp(1), dp(28)).apply { leftMargin = dp(16); rightMargin = dp(16) }
+            LayoutParams(dp(1), dp(28)).apply { leftMargin = dp(14); rightMargin = dp(14) }
         )
 
+        // Greeting Card + Bottom-Right Floating Nudge Bubble Wrapper
+        val greetingWrapper = FrameLayout(context).apply {
+            clipChildren = false
+            clipToPadding = false
+        }
         greetingCard = GreetingShineCard(context, lp.userName, lp.greetingPhrase, lp.accentColor)
-        addView(greetingCard, LayoutParams(-2, dp(42)))
+        greetingWrapper.addView(
+            greetingCard,
+            FrameLayout.LayoutParams(-2, dp(40), Gravity.TOP or Gravity.START)
+        )
+
+        nudgeOverlayBubble = TextView(context).apply {
+            textSize = 10f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.argb(248, 255, 245, 225))
+            setPadding(dp(11), dp(3), dp(12), dp(3))
+            isSingleLine = true
+            elevation = LauncherUtils.dpF(context, 6f)
+            visibility = View.GONE
+        }
+        greetingWrapper.addView(
+            nudgeOverlayBubble,
+            FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.START).apply {
+                topMargin = dp(38)
+                leftMargin = dp(24)
+            }
+        )
+        greetingCard.attachOverlayBubble(nudgeOverlayBubble)
+        addView(greetingWrapper, LayoutParams(-2, dp(40)))
 
         addView(View(context), LayoutParams(0, 1, 1f))
 
-        val voicePill = makeGlassPill("🎙  Voice Search").apply {
+        val voicePill = makeGlassPill("🎙  Voice").apply {
             setOnClickListener { callbacks.onVoiceSearch() }
         }
-        addView(voicePill, LayoutParams(-2, dp(40)))
+        addView(voicePill, LayoutParams(-2, dp(38)))
 
-        ramTv = makeText("⚡ RAM --%", 13f, Color.WHITE, true)
+        ramTv = makeText("⚡ RAM --%", 12.5f, Color.WHITE, true)
         val ramPill = LinearLayout(context).apply {
             gravity = Gravity.CENTER
-            setPadding(dp(15), 0, dp(15), 0)
+            setPadding(dp(13), 0, dp(13), 0)
             isFocusable = true
             isClickable = true
             addView(ramTv)
@@ -127,16 +155,16 @@ class TopNavBar(
                 Toast.makeText(context, "Memory refreshed • ${ramTv.text}", Toast.LENGTH_SHORT).show()
             }
         }
-        addView(ramPill, LayoutParams(-2, dp(40)).apply { leftMargin = dp(10) })
+        addView(ramPill, LayoutParams(-2, dp(38)).apply { leftMargin = dp(8) })
 
         val wifiWrapper = FrameLayout(context).apply {
             clipChildren = false
             clipToPadding = false
         }
-        wifiLabelTv = makeText("📶  WI-FI", 13.5f, Color.WHITE, true)
+        wifiLabelTv = makeText("📶  WI-FI", 13f, Color.WHITE, true)
         wifiPill = LinearLayout(context).apply {
             gravity = Gravity.CENTER
-            setPadding(dp(16), 0, dp(16), 0)
+            setPadding(dp(14), 0, dp(14), 0)
             isFocusable = true
             isClickable = true
             addView(wifiLabelTv)
@@ -148,15 +176,15 @@ class TopNavBar(
         }
         wifiWrapper.addView(
             wifiPill,
-            FrameLayout.LayoutParams(-2, dp(40), Gravity.TOP or Gravity.CENTER_HORIZONTAL)
+            FrameLayout.LayoutParams(-2, dp(38), Gravity.TOP or Gravity.CENTER_HORIZONTAL)
         )
 
         wifiBubbleTv = TextView(context).apply {
-            textSize = 10f
+            textSize = 9.5f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE)
-            setPadding(dp(10), dp(3), dp(10), dp(3))
-            maxWidth = dp(140)
+            setPadding(dp(9), dp(2), dp(9), dp(2))
+            maxWidth = dp(135)
             ellipsize = TextUtils.TruncateAt.END
             isSingleLine = true
             visibility = View.GONE
@@ -164,18 +192,18 @@ class TopNavBar(
         wifiWrapper.addView(
             wifiBubbleTv,
             FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply {
-                topMargin = dp(43)
+                topMargin = dp(41)
             }
         )
-        addView(wifiWrapper, LayoutParams(-2, dp(40)).apply { leftMargin = dp(10) })
+        addView(wifiWrapper, LayoutParams(-2, dp(38)).apply { leftMargin = dp(8) })
 
         addView(
             makeCircleButton("✦").apply { setOnClickListener { callbacks.onCustomizeClick() } },
-            LayoutParams(dp(40), dp(40)).apply { leftMargin = dp(10) }
+            LayoutParams(dp(38), dp(38)).apply { leftMargin = dp(8) }
         )
         addView(
             makeCircleButton("⚙").apply { setOnClickListener { callbacks.onQuickSettingsClick() } },
-            LayoutParams(dp(40), dp(40)).apply { leftMargin = dp(10) }
+            LayoutParams(dp(38), dp(38)).apply { leftMargin = dp(8) }
         )
 
         updateClockRamAndWifi()
@@ -241,7 +269,7 @@ class TopNavBar(
                 wifiBubbleTv.scaleX = 1f
                 wifiBubbleTv.scaleY = 1f
                 wifiBubbleTv.background = GradientDrawable().apply {
-                    setColor(Color.argb(195, 18, 72, 48))
+                    setColor(Color.argb(205, 18, 72, 48))
                     setStroke(dp(1), green)
                     cornerRadius = LauncherUtils.dpF(context, 12f)
                 }
@@ -369,10 +397,10 @@ class TopNavBar(
 
     private fun makeGlassPill(label: String) = LinearLayout(context).apply {
         gravity = Gravity.CENTER
-        setPadding(dp(18), 0, dp(18), 0)
+        setPadding(dp(15), 0, dp(15), 0)
         isFocusable = true
         isClickable = true
-        addView(makeText(label, 13.5f, Color.WHITE, true))
+        addView(makeText(label, 13f, Color.WHITE, true))
         background = pillBg(false, lp.accentColor)
         setOnFocusChangeListener { v, f ->
             LauncherUtils.applyFocusSpring(v, f, 1.07f, 8f)
@@ -382,7 +410,7 @@ class TopNavBar(
 
     private fun makeCircleButton(symbol: String) = TextView(context).apply {
         text = symbol
-        textSize = 18f
+        textSize = 17f
         setTextColor(Color.WHITE)
         gravity = Gravity.CENTER
         isFocusable = true
